@@ -1,13 +1,50 @@
 name := "giant-scala"
-organization := "com.matthicks"
-version := "1.0.0"
+organization in ThisBuild := "com.outr"
+version in ThisBuild := "1.0.0-SNAPSHOT"
+scalaVersion in ThisBuild := "2.12.4"
+crossScalaVersions in ThisBuild := List("2.12.4", "2.11.12")
+scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
+resolvers in ThisBuild ++= Seq(
+  Resolver.sonatypeRepo("releases"),
+  Resolver.sonatypeRepo("snapshots")
+)
 
-scalaVersion := "2.12.4"
+publishTo in ThisBuild := sonatypePublishTo.value
+sonatypeProfileName in ThisBuild := "com.outr"
+publishMavenStyle in ThisBuild := true
+licenses in ThisBuild := Seq("MIT" -> url("https://github.com/outr/giantscala/blob/master/LICENSE"))
+sonatypeProjectHosting in ThisBuild := Some(xerial.sbt.Sonatype.GithubHosting("outr", "giantscala", "matt@outr.com"))
+homepage in ThisBuild := Some(url("https://github.com/outr/giantscala"))
+scmInfo in ThisBuild := Some(
+  ScmInfo(
+    url("https://github.com/outr/giantscala"),
+    "scm:git@github.com:outr/giantscala.git"
+  )
+)
+developers in ThisBuild := List(
+  Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
+)
 
+val scribeVersion = "2.0.0-SNAPSHOT"
 val profigVersion = "2.0.0"
+val reactifyVersion = "2.3.0"
 val mongoScalaDriverVersion = "2.2.0"
 
-libraryDependencies ++= Seq(
-  "com.outr" %% "profig" % profigVersion,
-  "org.mongodb.scala" %% "mongo-scala-driver" % mongoScalaDriverVersion
-)
+lazy val root = project.in(file("."))
+  .aggregate(core)
+  .settings(
+    name := "giant-scala",
+    publish := {},
+    publishLocal := {}
+  )
+
+lazy val core = project.in(file("core"))
+  .settings(
+    name := "giant-scala",
+    libraryDependencies ++= Seq(
+      "com.outr" %% "scribe" % scribeVersion,
+      "com.outr" %% "profig" % profigVersion,
+      "com.outr" %% "reactify" % reactifyVersion,
+      "org.mongodb.scala" %% "mongo-scala-driver" % mongoScalaDriverVersion
+    )
+  )

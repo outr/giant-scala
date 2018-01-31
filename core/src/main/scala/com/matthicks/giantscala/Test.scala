@@ -1,10 +1,10 @@
 package com.matthicks.giantscala
 
 import com.mongodb.CursorType
-import org.mongodb.scala.{MongoClient, Observer}
 import org.mongodb.scala.bson.BsonTimestamp
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters._
+import org.mongodb.scala.{MongoClient, Observer}
 
 object Test {
   def main(args: Array[String]): Unit = {
