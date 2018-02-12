@@ -4,6 +4,7 @@ import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters.{equal, in}
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 abstract class DBCollection[T <: ModelObject](name: String, db: MongoDatabase) {

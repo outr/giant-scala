@@ -7,6 +7,7 @@ import org.mongodb.scala.{MongoClient, MongoCollection}
 import profig.JsonUtil
 
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 class MongoDatabase(url: String = "mongodb://localhost:27017", name: String) {
