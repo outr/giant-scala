@@ -7,8 +7,8 @@ import org.mongodb.scala.{MongoClient, MongoCollection}
 import profig.JsonUtil
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class MongoDatabase(url: String = "mongodb://localhost:27017", name: String) {
   private lazy val client = MongoClient(url)
