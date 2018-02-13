@@ -9,12 +9,14 @@ import profig.JsonUtil
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import org.mongodb.scala
 
 class MongoDatabase(url: String = "mongodb://localhost:27017", name: String) {
   private lazy val client = MongoClient(url)
-  private lazy val db = client.getDatabase(name)
+  protected lazy val db: scala.MongoDatabase = client.getDatabase(name)
 
-  private var collections = Set.empty[DBCollection[_ <: ModelObject]]
+  private var _collections = Set.empty[DBCollection[_ <: ModelObject]]
+  def collections: Set[DBCollection[_ <: ModelObject]] = _collections
 
   private lazy val info = db.getCollection("extraInfo")
 
@@ -77,7 +79,7 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", name: String) {
   case class DatabaseVersion(upgrades: Set[String], _id: String = "databaseVersion")
 
   private[giantscala] def addCollection(collection: DBCollection[_ <: ModelObject]): Unit = synchronized {
-    collections += collection
+    _collections += collection
   }
 
   private[giantscala] def getCollection(name: String): MongoCollection[Document] = db.getCollection(name)
