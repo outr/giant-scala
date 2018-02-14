@@ -1,6 +1,6 @@
-package com.matthicks.giantscala
+package com.outr.giantscala
 
-import com.matthicks.giantscala.Index._
+import com.outr.giantscala.Index._
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions

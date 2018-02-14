@@ -1,6 +1,6 @@
-package com.matthicks.giantscala
+package com.outr.giantscala
 
-import com.matthicks.giantscala.oplog.CollectionMonitor
+import com.outr.giantscala.oplog.CollectionMonitor
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters.{equal, in}

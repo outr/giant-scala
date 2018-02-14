@@ -1,4 +1,4 @@
-package com.matthicks.giantscala.oplog
+package com.outr.giantscala.oplog
 
 sealed trait OpType
 

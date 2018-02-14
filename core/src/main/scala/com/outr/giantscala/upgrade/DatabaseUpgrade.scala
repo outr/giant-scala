@@ -1,4 +1,4 @@
-package com.matthicks.giantscala.upgrade
+package com.outr.giantscala.upgrade
 
 import scala.concurrent.Future
 

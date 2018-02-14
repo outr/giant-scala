@@ -1,7 +1,7 @@
-package com.matthicks.giantscala
+package com.outr.giantscala
 
-import com.matthicks.giantscala.oplog.OperationsLog
-import com.matthicks.giantscala.upgrade.DatabaseUpgrade
+import com.outr.giantscala.oplog.OperationsLog
+import com.outr.giantscala.upgrade.DatabaseUpgrade
 import com.mongodb.client.model.UpdateOptions
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.{MongoClient, MongoCollection}

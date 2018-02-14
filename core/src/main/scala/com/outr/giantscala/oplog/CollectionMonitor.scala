@@ -1,6 +1,6 @@
-package com.matthicks.giantscala.oplog
+package com.outr.giantscala.oplog
 
-import com.matthicks.giantscala.{DBCollection, ModelObject}
+import com.outr.giantscala.{DBCollection, ModelObject}
 import org.mongodb.scala.bson.collection.immutable.Document
 import reactify.{Channel, InvocationType, Observer}
 

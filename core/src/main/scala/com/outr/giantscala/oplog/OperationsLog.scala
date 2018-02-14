@@ -1,6 +1,6 @@
-package com.matthicks.giantscala.oplog
+package com.outr.giantscala.oplog
 
-import com.matthicks.giantscala.Converter
+import com.outr.giantscala.Converter
 import com.mongodb.CursorType
 import org.mongodb.scala.bson.BsonTimestamp
 import org.mongodb.scala.bson.collection.immutable.Document

@@ -1,6 +1,6 @@
 package tests
 
-import com.matthicks.giantscala._
+import com.outr.giantscala._
 import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
 import scribe.Logger
 import scribe.format._

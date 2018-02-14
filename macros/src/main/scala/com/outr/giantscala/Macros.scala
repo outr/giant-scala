@@ -1,4 +1,4 @@
-package com.matthicks.giantscala
+package com.outr.giantscala
 
 import scala.annotation.compileTimeOnly
 import scala.language.experimental.macros

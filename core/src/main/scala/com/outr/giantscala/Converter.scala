@@ -1,4 +1,4 @@
-package com.matthicks.giantscala
+package com.outr.giantscala
 
 import org.bson.{BsonTimestamp, json}
 import org.bson.json.{JsonWriterSettings, StrictJsonWriter}

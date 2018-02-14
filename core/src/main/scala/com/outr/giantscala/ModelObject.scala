@@ -1,4 +1,4 @@
-package com.matthicks.giantscala
+package com.outr.giantscala
 
 trait ModelObject {
   def _id: String
