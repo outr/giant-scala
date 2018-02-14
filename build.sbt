@@ -50,7 +50,7 @@ lazy val core = project.in(file("core"))
   .settings(
     name := "giant-scala",
     libraryDependencies ++= Seq(
-      "com.outr" %% "scribe" % scribeVersion,
+      "com.outr" %% "scribe-slf4j" % scribeVersion,
       "com.outr" %% "profig" % profigVersion,
       "com.outr" %% "reactify" % reactifyVersion,
       "org.mongodb.scala" %% "mongo-scala-driver" % mongoScalaDriverVersion,

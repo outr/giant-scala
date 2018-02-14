@@ -1,19 +1,22 @@
 package com.matthicks.giantscala
 
+import com.matthicks.giantscala.oplog.CollectionMonitor
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters.{equal, in}
-import scala.language.experimental.macros
 
+import scala.language.experimental.macros
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 
-abstract class DBCollection[T <: ModelObject](name: String, db: MongoDatabase) {
+abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDatabase) {
   db.addCollection(this)
 
   lazy val collection: MongoCollection[Document] = db.getCollection(name)
 
   val converter: Converter[T]
+
+  lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this)
 
   def indexes: List[Index]
 

@@ -19,7 +19,7 @@ object Macros {
          }
 
          override def fromDocument(document: Document): $t = {
-           JsonUtil.fromJsonString[$t](document.toJson())
+           JsonUtil.fromJsonString[$t](document.toJson(Converter.settings))
          }
        }
      """

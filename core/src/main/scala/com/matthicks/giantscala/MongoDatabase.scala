@@ -1,5 +1,6 @@
 package com.matthicks.giantscala
 
+import com.matthicks.giantscala.oplog.OperationsLog
 import com.matthicks.giantscala.upgrade.DatabaseUpgrade
 import com.mongodb.client.model.UpdateOptions
 import org.mongodb.scala.bson.collection.immutable.Document
@@ -11,7 +12,7 @@ import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.mongodb.scala
 
-class MongoDatabase(url: String = "mongodb://localhost:27017", name: String) {
+class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String) {
   private lazy val client = MongoClient(url)
   protected lazy val db: scala.MongoDatabase = client.getDatabase(name)
 
@@ -21,6 +22,8 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", name: String) {
   private lazy val info = db.getCollection("extraInfo")
 
   private var versions = ListBuffer.empty[DatabaseUpgrade]
+
+  lazy val oplog: OperationsLog = new OperationsLog(client)
 
   def register(upgrade: DatabaseUpgrade): Unit = synchronized {
     if (!versions.contains(upgrade)) {
