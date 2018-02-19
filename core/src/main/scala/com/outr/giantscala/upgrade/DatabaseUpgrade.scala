@@ -1,5 +1,7 @@
 package com.outr.giantscala.upgrade
 
+import com.outr.giantscala.MongoDatabase
+
 import scala.concurrent.Future
 
 trait DatabaseUpgrade {
@@ -8,5 +10,5 @@ trait DatabaseUpgrade {
   def blockStartup: Boolean
   def alwaysRun: Boolean = false
 
-  def upgrade(): Future[Unit]
+  def upgrade(db: MongoDatabase): Future[Unit]
 }

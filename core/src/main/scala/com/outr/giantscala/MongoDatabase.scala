@@ -1,7 +1,7 @@
 package com.outr.giantscala
 
 import com.outr.giantscala.oplog.OperationsLog
-import com.outr.giantscala.upgrade.DatabaseUpgrade
+import com.outr.giantscala.upgrade.{CreateDatabase, DatabaseUpgrade}
 import com.mongodb.client.model.UpdateOptions
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.{MongoClient, MongoCollection}
@@ -24,6 +24,8 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
   private var versions = ListBuffer.empty[DatabaseUpgrade]
 
   lazy val oplog: OperationsLog = new OperationsLog(client)
+
+  register(CreateDatabase)
 
   def register(upgrade: DatabaseUpgrade): Unit = synchronized {
     if (!versions.contains(upgrade)) {
@@ -48,7 +50,7 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
     val future = upgrades.headOption match {
       case Some(u) => if (!newDatabase || u.applyToNew) {
         scribe.info(s"Upgrading with database upgrade: ${u.label} (${upgrades.length - 1} upgrades left)...")
-        u.upgrade().flatMap { _ =>
+        u.upgrade(this).flatMap { _ =>
           val versionUpdated = version.copy(upgrades = version.upgrades + u.label)
           info.replaceOne(Document("_id" -> "databaseVersion"), Document(JsonUtil.toJsonString(versionUpdated)), new UpdateOptions().upsert(true)).toFuture().flatMap { _ =>
             scribe.info(s"Completed database upgrade: ${u.label} successfully")
