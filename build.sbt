@@ -1,6 +1,6 @@
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.0.0-SNAPSHOT"
+version in ThisBuild := "1.0.0"
 scalaVersion in ThisBuild := "2.12.4"
 crossScalaVersions in ThisBuild := List("2.12.4", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
