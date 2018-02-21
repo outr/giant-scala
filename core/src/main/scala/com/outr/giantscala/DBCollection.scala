@@ -55,6 +55,8 @@ abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDat
     documents.headOption.map(converter.fromDocument)
   }
 
+  def count(): Future[Long] = collection.count().toFuture()
+
   def delete(id: String): Future[Unit] = collection.deleteOne(Document("_id" -> id)).toFuture().map(_ => ())
 
   def delete(ids: Seq[String]): Future[Int] = {
