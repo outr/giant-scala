@@ -1,6 +1,7 @@
 package tests
 
 import com.outr.giantscala._
+import com.outr.giantscala.oplog.Delete
 import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
 import scribe.Logger
 import scribe.format._
@@ -12,6 +13,7 @@ import scala.concurrent.Future
 class DBCollectionSpec extends AsyncWordSpec with Matchers {
   "DBCollection" should {
     var inserts = ListBuffer.empty[Person]
+    var deletes = ListBuffer.empty[Delete]
 
     "drop the database so it's clean and ready" in {
       Logger.update(Logger.rootName) { l =>
@@ -27,6 +29,9 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
     "start monitoring people" in {
       Database.person.monitor.insert.attach { person =>
         inserts += person
+      }
+      Database.person.monitor.delete.attach { delete =>
+        deletes += delete
       }
       noException should be thrownBy Database.person.monitor.start()
     }
@@ -64,6 +69,19 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         p.modified should be >= System.currentTimeMillis() - 1000
         p.modified should be <= System.currentTimeMillis()
         p._id should be("john.doe")
+      }
+    }
+    "delete one person" in {
+      Database.person.all().flatMap { people =>
+        val p = people.head
+        Database.person.delete(p._id).map { _ =>
+          people.length should be(1)
+        }
+      }
+    }
+    "verify the delete was monitored" in {
+      waitFor(deletes.length should be(1)).map { _ =>
+        deletes.length should be(1)
       }
     }
     "stop the oplog" in {

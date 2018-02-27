@@ -2,42 +2,30 @@ package com.outr.giantscala.oplog
 
 import com.outr.giantscala.{DBCollection, ModelObject}
 import org.mongodb.scala.bson.collection.immutable.Document
+import profig.JsonUtil
 import reactify.{Channel, InvocationType, Observer}
 
 class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends Observer[Operation] {
   private lazy val ns: String = s"${collection.db.name}.${collection.name}"
 
   /**
-    * Unfiltered operations for this collection. Contains inserts, updates, and deletes. See #insert, #update, and
-    * #delete for explicit monitoring.
+    * Only receives OpType.Insert records
     */
-  lazy val operations: Channel[(OpType, T)] = Channel[(OpType, T)]
+  lazy val insert: Channel[T] = Channel[T]
 
   /**
-    * Filtered channel from #operations to only receive OpType.Insert records
+    * Only receives OpType.Update records
     */
-  lazy val insert: Channel[T] = operations.collect {
-    case (opType, t) if opType == OpType.Insert => t
-  }
+  lazy val update: Channel[T] = Channel[T]
 
   /**
-    * Filtered channel from #operations to only receive OpType.Update records
+    * Only receives OpType.Delete _ids
     */
-  lazy val update: Channel[T] = operations.collect {
-    case (opType, t) if opType == OpType.Update => t
-  }
-
-  /**
-    * Filtered channel from #operations to only receive OpType.Delete records
-    */
-  lazy val delete: Channel[T] = operations.collect {
-    case (opType, t) if opType == OpType.Delete => t
-  }
+  lazy val delete: Channel[Delete] = Channel[Delete]
 
   /**
     * Starts the oplog monitor on the database if it's not already running and begins monitoring for operations relating
-    * to this collection. This must be called before any operations can be received by #operations, #insert, #update, or
-    * #delete.
+    * to this collection. This must be called before any operations can be received by #insert, #update, or #delete.
     */
   def start(): Unit = {
     collection.db.oplog.startIfNotRunning()
@@ -52,6 +40,11 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
   }
 
   override def apply(op: Operation, `type`: InvocationType): Unit = if (op.ns == ns) {
-    operations := (OpType(op.op) -> collection.converter.fromDocument(Document(op.o.spaces2)))
+    OpType(op.op) match {
+      case OpType.Insert => insert := collection.converter.fromDocument(Document(op.o.spaces2))
+      case OpType.Update => update := collection.converter.fromDocument(Document(op.o.spaces2))
+      case OpType.Delete => delete := JsonUtil.fromJsonString[Delete](op.o.spaces2)
+      case _ => // Ignore others
+    }
   }
 }
