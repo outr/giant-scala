@@ -1,5 +1,7 @@
 package com.outr.giantscala
 
+import java.util.concurrent.atomic.AtomicBoolean
+
 import com.outr.giantscala.oplog.OperationsLog
 import com.outr.giantscala.upgrade.{CreateDatabase, DatabaseUpgrade}
 import com.mongodb.client.model.UpdateOptions
@@ -16,6 +18,9 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
   private lazy val client = MongoClient(url)
   protected lazy val db: scala.MongoDatabase = client.getDatabase(name)
 
+  private val _initialized = new AtomicBoolean(false)
+  def initialized: Boolean = _initialized.get()
+
   private var _collections = Set.empty[DBCollection[_ <: ModelObject]]
   def collections: Set[DBCollection[_ <: ModelObject]] = _collections
 
@@ -28,13 +33,14 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
   register(CreateDatabase)
 
   def register(upgrade: DatabaseUpgrade): Unit = synchronized {
+    assert(!initialized, "Database is already initialized. Cannot register upgrades after initialization.")
     if (!versions.contains(upgrade)) {
       versions += upgrade
     }
     ()
   }
 
-  def init(): Future[Unit] = {
+  def init(): Future[Unit] = if (_initialized.compareAndSet(false, true)) {
     info
       .find(Document("_id" -> "databaseVersion"))
       .toFuture()
@@ -43,6 +49,8 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
       val upgrades = versions.toList.filterNot(v => version.upgrades.contains(v.label) && !v.alwaysRun)
       upgrade(version, upgrades, version.upgrades.isEmpty)
     }
+  } else {
+    Future.successful(())
   }
 
   private def upgrade(version: DatabaseVersion, upgrades: List[DatabaseUpgrade], newDatabase: Boolean, currentlyBlocking: Boolean = true): Future[Unit] = {
