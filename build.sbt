@@ -1,6 +1,6 @@
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.0.2"
+version in ThisBuild := "1.0.3-SNAPSHOT"
 scalaVersion in ThisBuild := "2.12.4"
 crossScalaVersions in ThisBuild := List("2.12.4", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
@@ -25,11 +25,11 @@ developers in ThisBuild := List(
   Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
 )
 
-val scribeVersion = "2.2.0"
-val profigVersion = "2.0.1"
+val scribeVersion = "2.2.1"
+val profigVersion = "2.2.0"
 val reactifyVersion = "2.3.0"
-val mongoScalaDriverVersion = "2.2.0"
-val scalatestVersion: String = "3.0.4"
+val mongoScalaDriverVersion = "2.2.1"
+val scalatestVersion: String = "3.0.5"
 
 lazy val root = project.in(file("."))
   .aggregate(macros, core)

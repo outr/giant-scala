@@ -1,5 +1,6 @@
 package com.outr.giantscala
 
+import com.mongodb.client.model.UpdateOptions
 import com.outr.giantscala.oplog.CollectionMonitor
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.collection.immutable.Document
@@ -37,6 +38,11 @@ abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDat
   def update(value: T): Future[T] = {
     val doc = converter.toDocument(value)
     collection.replaceOne(equal("_id", value._id), doc).toFuture().map(_ => value)
+  }
+
+  def upsert(value: T): Future[T] = {
+    val doc = converter.toDocument(value)
+    collection.replaceOne(equal("_id", value._id), doc, new UpdateOptions().upsert(true)).toFuture().map(_ => value)
   }
 
   def byIds(ids: Seq[String]): Future[List[T]] = {
