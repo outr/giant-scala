@@ -39,10 +39,6 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       Database.person.insert(Person(name = "John Doe", age = 30, _id = "john.doe")).map { p =>
         p.name should be("John Doe")
         p.age should be(30)
-        p.created should be >= System.currentTimeMillis() - 1100
-        p.created should be <= System.currentTimeMillis()
-        p.modified should be >= System.currentTimeMillis() - 1100
-        p.modified should be <= System.currentTimeMillis()
         p._id should be("john.doe")
       }
     }
@@ -51,10 +47,6 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         val p = inserts.head
         p.name should be("John Doe")
         p.age should be(30)
-        p.created should be >= System.currentTimeMillis() - 1100
-        p.created should be <= System.currentTimeMillis()
-        p.modified should be >= System.currentTimeMillis() - 1100
-        p.modified should be <= System.currentTimeMillis()
         p._id should be("john.doe")
       }
     }
@@ -64,10 +56,6 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         val p = people.head
         p.name should be("John Doe")
         p.age should be(30)
-        p.created should be >= System.currentTimeMillis() - 1100
-        p.created should be <= System.currentTimeMillis()
-        p.modified should be >= System.currentTimeMillis() - 1100
-        p.modified should be <= System.currentTimeMillis()
         p._id should be("john.doe")
       }
     }
@@ -90,7 +78,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
   }
 
   def waitFor(condition: => Assertion,
-              time: Long = 5000L,
+              time: Long = 15000L,
               startTime: Long = System.currentTimeMillis()): Future[Assertion] = {
     try {
       val result: Assertion = condition

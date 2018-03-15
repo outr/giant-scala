@@ -26,7 +26,7 @@ developers in ThisBuild := List(
 )
 
 val scribeVersion = "2.2.1"
-val profigVersion = "2.2.0"
+val profigVersion = "2.2.1"
 val reactifyVersion = "2.3.0"
 val mongoScalaDriverVersion = "2.2.1"
 val scalatestVersion: String = "3.0.5"
