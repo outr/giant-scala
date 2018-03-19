@@ -1,14 +1,18 @@
 package tests
 
 import com.outr.giantscala._
+import com.outr.giantscala.failure.{DBFailure, FailureType}
 import com.outr.giantscala.oplog.Delete
+import org.mongodb.scala.MongoException
 import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
 import scribe.Logger
 import scribe.format._
 import scribe.modify.ClassNameFilter
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.Future
+import scala.concurrent.{Future, Promise}
+import scala.language.implicitConversions
+import scala.util.Success
 
 class DBCollectionSpec extends AsyncWordSpec with Matchers {
   "DBCollection" should {
@@ -23,6 +27,11 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       }
       Database.drop().map(_ => true should be(true))
     }
+    "initiate database upgrades" in {
+      Database.init().map { _ =>
+        succeed
+      }
+    }
     "create successfully" in {
       Database.person shouldNot be(null)
     }
@@ -36,7 +45,9 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       noException should be thrownBy Database.person.monitor.start()
     }
     "insert a person" in {
-      Database.person.insert(Person(name = "John Doe", age = 30, _id = "john.doe")).map { p =>
+      Database.person.insert(Person(name = "John Doe", age = 30, _id = "john.doe")).map { result =>
+        result.isRight should be(true)
+        val p = result.right.get
         p.name should be("John Doe")
         p.age should be(30)
         p._id should be("john.doe")
@@ -57,6 +68,13 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         p.name should be("John Doe")
         p.age should be(30)
         p._id should be("john.doe")
+      }
+    }
+    "trigger constraint violation inserting the same name twice" in {
+      Database.person.insert(Person(name = "John Doe", age = 31, _id = "john.doe2")).map { result =>
+        result.isLeft should be(true)
+        val failure = result.left.get
+        failure.`type` should be(FailureType.DuplicateKey)
       }
     }
     "delete one person" in {
@@ -106,9 +124,11 @@ case class Person(name: String,
 class PersonCollection extends DBCollection[Person]("person", Database) {
   override val converter: Converter[Person] = Converter.auto[Person]
 
-  override def indexes: List[Index] = Nil
+  override def indexes: List[Index] = List(
+    Index.Ascending("name").unique
+  )
 }
 
 object Database extends MongoDatabase(name = "giant-scala-test") {
-  val person: PersonCollection = new PersonCollection
+  val person: PersonCollection = new PersonCollection   // TODO: typed[PersonCollection]
 }
