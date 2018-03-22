@@ -121,6 +121,9 @@ case class Person(name: String,
                   modified: Long = System.currentTimeMillis(),
                   _id: String) extends ModelObject
 
+@TypedCollection[Person]
+object Person
+
 class PersonCollection extends DBCollection[Person]("person", Database) {
   override val converter: Converter[Person] = Converter.auto[Person]
 
