@@ -4,6 +4,7 @@ import com.outr.giantscala._
 import com.outr.giantscala.failure.{DBFailure, FailureType}
 import com.outr.giantscala.oplog.Delete
 import org.mongodb.scala.MongoException
+import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
 import scribe.Logger
 import scribe.format._
@@ -70,6 +71,15 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         p._id should be("john.doe")
       }
     }
+    "query back by name" in {
+      Database.person.byName("John Doe").map { people =>
+        people.length should be(1)
+        val p = people.head
+        p.name should be("John Doe")
+        p.age should be(30)
+        p._id should be("john.doe")
+      }
+    }
     "trigger constraint violation inserting the same name twice" in {
       Database.person.insert(Person(name = "John Doe", age = 31, _id = "john.doe2")).map { result =>
         result.isLeft should be(true)
@@ -96,7 +106,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
   }
 
   def waitFor(condition: => Assertion,
-              time: Long = 15000L,
+              time: Long = 30000L,
               startTime: Long = System.currentTimeMillis()): Future[Assertion] = {
     try {
       val result: Assertion = condition
@@ -125,11 +135,17 @@ case class Person(name: String,
 object Person
 
 class PersonCollection extends DBCollection[Person]("person", Database) {
+  import scala.concurrent.ExecutionContext.Implicits.global
+
   override val converter: Converter[Person] = Converter.auto[Person]
 
   override def indexes: List[Index] = List(
     Index.Ascending("name").unique
   )
+
+  def byName(name: String): Future[List[Person]] = {
+    collection.find(Document(Person.name -> name)).map(converter.fromDocument).toFuture().map(_.toList)
+  }
 }
 
 object Database extends MongoDatabase(name = "giant-scala-test") {

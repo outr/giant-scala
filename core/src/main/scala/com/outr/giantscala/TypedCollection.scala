@@ -15,12 +15,41 @@ object TypedCollection {
 
     val q"""new TypedCollection[$cls]().macroTransform($a)""" = c.macroApplication
     val tpe = c.typecheck(q"(??? : $cls)").tpe
-    val fields = tpe.decls.foreach { d =>
-      println(s"Field: $d / ${d.getClass}")
+    val fields = fieldNamesAndTypes(c)(tpe).toList.map {
+      case (n, _) => q"val ${n.toTermName}: String = ${n.toString}"
     }
 
-    println(s"*** Macro Application? $tpe")
+    def modifiedObject(objectDef: ModuleDef): c.Expr[AnyRef] = {
+      val ModuleDef(_, objectName, template) = objectDef
+      val body = template.body.tail     // Drop the init method
+      val ret = q"""
+        object $objectName {
+          ..$fields
+          ..$body
+        }
+      """
+      c.Expr[AnyRef](ret)
+    }
 
-    c.abort(c.enclosingPosition, "Not finished!")
+    annottees.map(_.tree) match {
+      case (objectDecl: ModuleDef) :: _ => modifiedObject(objectDecl)
+      case x => c.abort(c.enclosingPosition, s"@table can only be applied to an object, not to $x")
+    }
+  }
+
+  private def fieldNamesAndTypes(c: whitebox.Context)
+                                (tpe: c.universe.Type): Iterable[(c.universe.Name, c.universe.Type)] = {
+    import c.universe._
+
+    object CaseField {
+      def unapply(trmSym: TermSymbol): Option[(Name, Type)] = {
+        if (trmSym.isVal && trmSym.isCaseAccessor) Some((TermName(trmSym.name.toString.trim), trmSym.typeSignature))
+        else None
+      }
+    }
+
+    tpe.decls.collect {
+      case CaseField(n, t) => (n, t)
+    }
   }
 }

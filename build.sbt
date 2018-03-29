@@ -1,8 +1,8 @@
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
 version in ThisBuild := "1.0.4-SNAPSHOT"
-scalaVersion in ThisBuild := "2.12.4"
-crossScalaVersions in ThisBuild := List("2.12.4", "2.11.12")
+scalaVersion in ThisBuild := "2.12.5"
+crossScalaVersions in ThisBuild := List("2.12.5", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 resolvers in ThisBuild ++= Seq(
   Resolver.sonatypeRepo("releases"),
@@ -25,7 +25,7 @@ developers in ThisBuild := List(
   Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
 )
 
-val scribeVersion = "2.3.0"
+val scribeVersion = "2.3.1"
 val profigVersion = "2.2.1"
 val reactifyVersion = "2.3.0"
 val mongoScalaDriverVersion = "2.2.1"
