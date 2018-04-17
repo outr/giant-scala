@@ -100,6 +100,40 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         deletes.length should be(1)
       }
     }
+    "do a batch insert" in {
+      inserts.clear()
+      Database.person.batch.insert(
+        Person("Person A", 1, _id = "personA"),
+        Person("Person B", 2, _id = "personB")
+      ).execute().map { result =>
+        result.getInsertedCount should be(2)
+      }
+    }
+    "verify the batch insert was monitored" in {
+      waitFor(inserts.length should be(2)).map { _ =>
+        val p = inserts.head
+        p.name should be("Person A")
+        p.age should be(1)
+        p._id should be("personA")
+      }
+    }
+    "do a batch update" in {
+      Database.person.batch.update(
+        Person("Person A", 123, _id = "personA"),
+        Person("Person B", 234, _id = "personB")
+      ).execute().map { result =>
+        result.getModifiedCount should be(2)
+      }
+    }
+    "query two people back" in {
+      Database.person.all().map { people =>
+        people.length should be(2)
+        val p = people.head
+        p.name should be("Person A")
+        p.age should be(123)
+        p._id should be("personA")
+      }
+    }
     "stop the oplog" in {
       noException should be thrownBy Database.oplog.stop()
     }

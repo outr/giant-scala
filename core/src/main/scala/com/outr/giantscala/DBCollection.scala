@@ -40,6 +40,8 @@ abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDat
 
   def create(): Future[Unit] = Future.sequence(indexes.map(_.create(collection))).map(_ => ())    // Create indexes
 
+  lazy val batch: Batch[T] = Batch[T](this)
+
   def insert(values: Seq[T]): Future[Seq[T]] = if (values.nonEmpty) {
     val docs = values.map(converter.toDocument)
     collection.insertMany(docs).toFuture().map(_ => values)
