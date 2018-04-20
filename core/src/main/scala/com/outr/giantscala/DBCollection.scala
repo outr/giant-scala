@@ -3,7 +3,7 @@ package com.outr.giantscala
 import com.mongodb.client.model.UpdateOptions
 import com.outr.giantscala.failure.DBFailure
 import com.outr.giantscala.oplog.CollectionMonitor
-import org.mongodb.scala.{MongoCollection, MongoException}
+import org.mongodb.scala.{BulkWriteResult, MongoCollection, MongoException}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters.{equal, in}
 
@@ -59,9 +59,25 @@ abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDat
     collection.replaceOne(equal("_id", value._id), doc).toFuture().map(_ => value).either
   }
 
+  def update(values: Seq[T]): Future[BulkWriteResult] = {
+    var b = batch
+    values.foreach { v =>
+      b = b.update(v)
+    }
+    b.execute()
+  }
+
   def upsert(value: T): Future[Either[DBFailure, T]] = {
     val doc = converter.toDocument(value)
     collection.replaceOne(equal("_id", value._id), doc, new UpdateOptions().upsert(true)).toFuture().map(_ => value).either
+  }
+
+  def upsert(values: Seq[T]): Future[BulkWriteResult] = {
+    var b = batch
+    values.foreach { v =>
+      b = b.upsert(v)
+    }
+    b.execute()
   }
 
   def byIds(ids: Seq[String]): Future[List[T]] = {
