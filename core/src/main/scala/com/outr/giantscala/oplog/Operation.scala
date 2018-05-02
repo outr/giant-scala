@@ -28,4 +28,6 @@ case class Operation(ts: Long,
                      op: Char,
                      ns: String,
                      wall: Long,
-                     o: Json)
+                     o: Json) {
+  lazy val `type`: OpType = OpType(op)
+}

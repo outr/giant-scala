@@ -20,7 +20,7 @@ case class Batch[T <: ModelObject](collection: DBCollection[T],
   def upsert(values: T*): Batch[T] = withOps(values.map(v => ReplaceOneModel(
     filter = equal("_id", v._id),
     replacement = collection.converter.toDocument(v),
-    updateOptions = new UpdateOptions().upsert(true)
+    replaceOptions = new ReplaceOptions().upsert(true)
   )))
   def delete(ids: String*): Batch[T] = {
     withOps(ids.map(id => DeleteOneModel(Document("_id" -> id))).asInstanceOf[Seq[WriteModel[Document]]])

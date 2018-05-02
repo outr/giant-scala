@@ -4,7 +4,6 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import com.outr.giantscala.oplog.OperationsLog
 import com.outr.giantscala.upgrade.{CreateDatabase, DatabaseUpgrade}
-import com.mongodb.client.model.UpdateOptions
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.{MongoClient, MongoCollection}
 import profig.JsonUtil
@@ -13,6 +12,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import org.mongodb.scala
+import org.mongodb.scala.model.ReplaceOptions
 
 class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String) {
   private lazy val client = MongoClient(url)
@@ -60,7 +60,7 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
         scribe.info(s"Upgrading with database upgrade: ${u.label} (${upgrades.length - 1} upgrades left)...")
         u.upgrade(this).flatMap { _ =>
           val versionUpdated = version.copy(upgrades = version.upgrades + u.label)
-          info.replaceOne(Document("_id" -> "databaseVersion"), Document(JsonUtil.toJsonString(versionUpdated)), new UpdateOptions().upsert(true)).toFuture().flatMap { _ =>
+          info.replaceOne(Document("_id" -> "databaseVersion"), Document(JsonUtil.toJsonString(versionUpdated)), new ReplaceOptions().upsert(true)).toFuture().flatMap { _ =>
             scribe.info(s"Completed database upgrade: ${u.label} successfully")
             upgrade(versionUpdated, upgrades.tail, newDatabase, blocking)
           }
@@ -68,7 +68,7 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
       } else {
         scribe.info(s"Skipping database upgrade: ${u.label} as it doesn't apply to new database")
         val versionUpdated = version.copy(upgrades = version.upgrades + u.label)
-        info.replaceOne(Document("_id" -> "databaseVersion"), Document(JsonUtil.toJsonString(versionUpdated)), new UpdateOptions().upsert(true)).toFuture().flatMap { _ =>
+        info.replaceOne(Document("_id" -> "databaseVersion"), Document(JsonUtil.toJsonString(versionUpdated)), new ReplaceOptions().upsert(true)).toFuture().flatMap { _ =>
           upgrade(versionUpdated, upgrades.tail, newDatabase, blocking)
         }
       }
