@@ -1,6 +1,6 @@
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.0.8-SNAPSHOT"
+version in ThisBuild := "1.0.8"
 scalaVersion in ThisBuild := "2.12.6"
 crossScalaVersions in ThisBuild := List("2.12.6", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
@@ -13,7 +13,7 @@ publishTo in ThisBuild := sonatypePublishTo.value
 sonatypeProfileName in ThisBuild := "com.outr"
 publishMavenStyle in ThisBuild := true
 licenses in ThisBuild := Seq("MIT" -> url("https://github.com/outr/giantscala/blob/master/LICENSE"))
-sonatypeProjectHosting in ThisBuild := Some(xerial.sbt.Sonatype.GithubHosting("outr", "giantscala", "matt@outr.com"))
+sonatypeProjectHosting in ThisBuild := Some(xerial.sbt.Sonatype.GitHubHosting("outr", "giantscala", "matt@outr.com"))
 homepage in ThisBuild := Some(url("https://github.com/outr/giantscala"))
 scmInfo in ThisBuild := Some(
   ScmInfo(
