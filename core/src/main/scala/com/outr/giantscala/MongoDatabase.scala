@@ -2,6 +2,7 @@ package com.outr.giantscala
 
 import java.util.concurrent.atomic.AtomicBoolean
 
+import scala.language.experimental.macros
 import com.outr.giantscala.oplog.OperationsLog
 import com.outr.giantscala.upgrade.{CreateDatabase, DatabaseUpgrade}
 import org.mongodb.scala.bson.collection.immutable.Document
@@ -24,7 +25,39 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
   private var _collections = Set.empty[DBCollection[_ <: ModelObject]]
   def collections: Set[DBCollection[_ <: ModelObject]] = _collections
 
-  private lazy val info = db.getCollection("extraInfo")
+  /**
+    * Key/Value store functionality against MongoDB
+    */
+  object store {
+    private lazy val info = db.getCollection("extraInfo")
+
+    object string {
+      def get(key: String): Future[Option[String]] = {
+        info
+          .find(Document("_id" -> key))
+          .toFuture()
+          .map(_.map(d => JsonUtil.fromJsonString[Stored](d.toJson()).value).headOption)
+      }
+
+      def set(key: String, value: String): Future[Unit] = {
+        val json = JsonUtil.toJsonString(Stored(key, value))
+        info
+          .replaceOne(
+            Document("_id" -> key),
+            Document(json),
+            new ReplaceOptions().upsert(true)
+          )
+          .toFuture()
+          .map(_ => ())
+      }
+    }
+
+    def typed[T](key: String): TypedStore[T] = macro Macros.storeTyped[T]
+
+    case class Stored(_id: String, value: String)
+  }
+
+  private lazy val versionStore = store.typed[DatabaseVersion]("databaseVersion")
 
   private var versions = ListBuffer.empty[DatabaseUpgrade]
 
@@ -41,11 +74,7 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
   }
 
   def init(): Future[Unit] = if (_initialized.compareAndSet(false, true)) {
-    info
-      .find(Document("_id" -> "databaseVersion"))
-      .toFuture()
-      .map(docs => docs.headOption.map(d => JsonUtil.fromJsonString[DatabaseVersion](d.toJson())))
-      .map(_.getOrElse(DatabaseVersion(Set.empty))).flatMap { version =>
+    versionStore(DatabaseVersion()).flatMap { version =>
       val upgrades = versions.toList.filterNot(v => version.upgrades.contains(v.label) && !v.alwaysRun)
       upgrade(version, upgrades, version.upgrades.isEmpty)
     }
@@ -60,7 +89,7 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
         scribe.info(s"Upgrading with database upgrade: ${u.label} (${upgrades.length - 1} upgrades left)...")
         u.upgrade(this).flatMap { _ =>
           val versionUpdated = version.copy(upgrades = version.upgrades + u.label)
-          info.replaceOne(Document("_id" -> "databaseVersion"), Document(JsonUtil.toJsonString(versionUpdated)), new ReplaceOptions().upsert(true)).toFuture().flatMap { _ =>
+          versionStore.set(versionUpdated).flatMap { _ =>
             scribe.info(s"Completed database upgrade: ${u.label} successfully")
             upgrade(versionUpdated, upgrades.tail, newDatabase, blocking)
           }
@@ -68,7 +97,7 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
       } else {
         scribe.info(s"Skipping database upgrade: ${u.label} as it doesn't apply to new database")
         val versionUpdated = version.copy(upgrades = version.upgrades + u.label)
-        info.replaceOne(Document("_id" -> "databaseVersion"), Document(JsonUtil.toJsonString(versionUpdated)), new ReplaceOptions().upsert(true)).toFuture().flatMap { _ =>
+        versionStore.set(versionUpdated).flatMap { _ =>
           upgrade(versionUpdated, upgrades.tail, newDatabase, blocking)
         }
       }
@@ -89,7 +118,7 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
     client.close()
   }
 
-  case class DatabaseVersion(upgrades: Set[String], _id: String = "databaseVersion")
+  case class DatabaseVersion(upgrades: Set[String] = Set.empty, _id: String = "databaseVersion")
 
   private[giantscala] def addCollection(collection: DBCollection[_ <: ModelObject]): Unit = synchronized {
     _collections += collection

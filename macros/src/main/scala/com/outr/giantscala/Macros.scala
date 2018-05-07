@@ -24,4 +24,27 @@ object Macros {
        }
      """
   }
+
+  def storeTyped[T](c: blackbox.Context)(key: c.Tree)(implicit t: c.WeakTypeTag[T]): c.Tree = {
+    import c.universe._
+
+    val store = c.prefix
+
+    q"""
+       import profig.JsonUtil
+
+       new com.outr.giantscala.TypedStore[$t] {
+         override def get: Future[Option[$t]] = {
+           $store.string.get($key).map(_.map(json => JsonUtil.fromJsonString[$t](json)))
+         }
+
+         override def apply(default: => $t): Future[$t] = get.map(_.getOrElse(default))
+
+         override def set(value: $t): Future[Unit] = {
+           val json = JsonUtil.toJsonString[$t](value)
+           $store.string.set($key, json)
+         }
+       }
+     """
+  }
 }
