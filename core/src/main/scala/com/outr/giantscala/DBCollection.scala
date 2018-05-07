@@ -1,6 +1,6 @@
 package com.outr.giantscala
 
-import com.outr.giantscala.failure.DBFailure
+import com.outr.giantscala.failure.{DBFailure, FailureType}
 import com.outr.giantscala.oplog.CollectionMonitor
 import org.mongodb.scala.{BulkWriteResult, MongoCollection, MongoException}
 import org.mongodb.scala.bson.collection.immutable.Document
@@ -89,6 +89,18 @@ abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDat
   def all(limit: Int = 1000): Future[List[T]] = {
     collection.find().limit(limit).toFuture().map { documents =>
       documents.map(converter.fromDocument).toList
+    }
+  }
+
+  def sample(size: Int, retries: Int = 2): Future[Either[DBFailure, List[T]]] = {
+    import org.mongodb.scala.model.Aggregates._
+
+    collection.aggregate(List(
+      sample(size)
+    )).toFuture()
+      .map(_.map(converter.fromDocument).toList).either.flatMap {
+        case Left(f) if f.`type` == FailureType.SampleNoNonDuplicate && retries > 0 => sample(size, retries - 1)
+        case result => Future.successful(result)
     }
   }
 

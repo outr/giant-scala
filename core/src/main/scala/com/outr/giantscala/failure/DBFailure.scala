@@ -26,6 +26,7 @@ object FailureType {
   case object ShardKeyTooBig extends FailureType(13334)
   case object StaleConfig extends FailureType(13388)
   case object DatabaseDifferCase extends FailureType(13297)
+  case object SampleNoNonDuplicate extends FailureType(28799)
 
   case object Unknown extends FailureType(-1)
 
