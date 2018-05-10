@@ -1,6 +1,6 @@
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.0.9"
+version in ThisBuild := "1.0.10-SNAPSHOT"
 scalaVersion in ThisBuild := "2.12.6"
 crossScalaVersions in ThisBuild := List("2.12.6", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
@@ -26,9 +26,10 @@ developers in ThisBuild := List(
 )
 
 val scribeVersion = "2.3.4"
-val profigVersion = "2.2.1"
+val profigVersion = "2.3.0"
 val reactifyVersion = "2.3.0"
 val mongoScalaDriverVersion = "2.3.0"
+val macroParadiseVersion = "2.1.1"
 val scalatestVersion: String = "3.0.5"
 
 lazy val root = project.in(file("."))
@@ -56,5 +57,5 @@ lazy val core = project.in(file("core"))
       "org.mongodb.scala" %% "mongo-scala-driver" % mongoScalaDriverVersion,
       "org.scalatest" %% "scalatest" % scalatestVersion % Test
     ),
-    addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full)
+    addCompilerPlugin("org.scalamacros" % "paradise" % macroParadiseVersion cross CrossVersion.full)
   )
