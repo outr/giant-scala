@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
 
-sbt +clean +test +macros/publishSigned +core/publishSigned sonatypeRelease
+set -e
+
+sbt +clean +test
+sbt +macros/publishSigned +core/publishSigned sonatypeRelease
