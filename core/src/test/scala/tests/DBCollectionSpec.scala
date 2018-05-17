@@ -20,12 +20,14 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
     var inserts = ListBuffer.empty[Person]
     var deletes = ListBuffer.empty[Delete]
 
+    "reconfigure logging" in {
+      Logger.root.clearHandlers().withHandler(
+        formatter = formatter"$date $levelPaddedRight $position - ${scribe.format.message}$newLine",
+        modifiers = List(ClassNameFilter.startsWith("org.mongodb.driver.cluster", exclude = true))
+      ).replace()
+      Future.successful(succeed)
+    }
     "drop the database so it's clean and ready" in {
-      Logger.update(Logger.rootName) { l =>
-        val formatter = formatter"$date $levelPaddedRight $position - ${scribe.format.message}$newLine"
-        val filter = ClassNameFilter.startsWith("org.mongodb.driver.cluster", exclude = true)
-        l.clearHandlers().withHandler(formatter, modifiers = List(filter))
-      }
       Database.drop().map(_ => true should be(true))
     }
     "initiate database upgrades" in {
@@ -140,7 +142,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
   }
 
   def waitFor(condition: => Assertion,
-              time: Long = 30000L,
+              time: Long = 60000L,
               startTime: Long = System.currentTimeMillis()): Future[Assertion] = {
     try {
       val result: Assertion = condition
