@@ -1,6 +1,8 @@
+import sbtcrossproject.crossProject
+
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.0.11"
+version in ThisBuild := "1.0.12-SNAPSHOT"
 scalaVersion in ThisBuild := "2.12.6"
 crossScalaVersions in ThisBuild := List("2.12.6", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
@@ -25,7 +27,7 @@ developers in ThisBuild := List(
   Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
 )
 
-val scribeVersion = "2.4.0"
+val scribeVersion = "2.5.0"
 val profigVersion = "2.3.0"
 val reactifyVersion = "2.3.0"
 val mongoScalaDriverVersion = "2.3.0"
@@ -33,29 +35,42 @@ val macroParadiseVersion = "2.1.1"
 val scalatestVersion: String = "3.0.5"
 
 lazy val root = project.in(file("."))
-  .aggregate(macros, core)
+  .aggregate(macrosJS, macrosJVM, coreJS, coreJVM)
   .settings(
     name := "giant-scala",
     publish := {},
     publishLocal := {}
   )
 
-lazy val macros = project.in(file("macros"))
+lazy val macros = crossProject(JVMPlatform, JSPlatform)
+  .in(file("macros"))
   .settings(
     name := "giant-scala-macros",
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
   )
 
-lazy val core = project.in(file("core"))
+lazy val macrosJS = macros.js
+lazy val macrosJVM = macros.jvm
+
+lazy val core = crossProject(JVMPlatform, JSPlatform)
+  .in(file("core"))
   .dependsOn(macros)
   .settings(
     name := "giant-scala",
     libraryDependencies ++= Seq(
-      "com.outr" %% "scribe-slf4j" % scribeVersion,
-      "com.outr" %% "profig" % profigVersion,
-      "com.outr" %% "reactify" % reactifyVersion,
-      "org.mongodb.scala" %% "mongo-scala-driver" % mongoScalaDriverVersion,
-      "org.scalatest" %% "scalatest" % scalatestVersion % Test
+      "com.outr" %%% "scribe" % scribeVersion,
+      "com.outr" %%% "profig" % profigVersion,
+      "com.outr" %%% "reactify" % reactifyVersion,
+      "org.scalatest" %%% "scalatest" % scalatestVersion % Test
     ),
     addCompilerPlugin("org.scalamacros" % "paradise" % macroParadiseVersion cross CrossVersion.full)
   )
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      "com.outr" %% "scribe-slf4j" % scribeVersion,
+      "org.mongodb.scala" %% "mongo-scala-driver" % mongoScalaDriverVersion
+    )
+  )
+
+lazy val coreJS = core.js
+lazy val coreJVM = core.jvm
