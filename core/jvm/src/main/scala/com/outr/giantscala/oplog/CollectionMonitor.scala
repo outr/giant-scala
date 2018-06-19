@@ -23,7 +23,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
   /**
     * Only receives OpType.Update records
     *
-    * Note: this will not receive incomplete replacements. For example, $set calls will be ignored as they apply to
+    * Note: this will not receive incomplete replacements. For example, &#36;set calls will be ignored as they apply to
     * multiple documents as well as not having a complete view of the object
     */
   lazy val update: Channel[T] = {

@@ -4,4 +4,4 @@ set -e
 
 sbt +clean
 sbt +test
-sbt +macros/publishSigned +core/publishSigned sonatypeRelease
+sbt +macrosJS/publishSigned +macrosJVM/publishSigned +coreJS/publishSigned +coreJVM/publishSigned sonatypeRelease
