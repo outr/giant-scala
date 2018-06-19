@@ -2,5 +2,6 @@
 
 set -e
 
-sbt +clean +test
+sbt +clean
+sbt +test
 sbt +macros/publishSigned +core/publishSigned sonatypeRelease
