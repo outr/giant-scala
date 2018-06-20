@@ -171,7 +171,7 @@ case class Person(name: String,
 object Person
 
 class PersonCollection extends DBCollection[Person]("person", Database) {
-  import scala.concurrent.ExecutionContext.Implicits.global
+  import scribe.Execution.global
 
   override val converter: Converter[Person] = Converter.auto[Person]
 

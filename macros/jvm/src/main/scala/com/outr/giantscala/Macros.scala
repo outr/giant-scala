@@ -34,13 +34,13 @@ object Macros {
        import profig.JsonUtil
 
        new com.outr.giantscala.TypedStore[$t] {
-         override def get: Future[Option[$t]] = {
+         override def get: Future[Option[$t]] = scribe.async {
            $store.string.get($key).map(_.map(json => JsonUtil.fromJsonString[$t](json)))
          }
 
-         override def apply(default: => $t): Future[$t] = get.map(_.getOrElse(default))
+         override def apply(default: => $t): Future[$t] = scribe.async(get.map(_.getOrElse(default)))
 
-         override def set(value: $t): Future[Unit] = {
+         override def set(value: $t): Future[Unit] = scribe.async {
            val json = JsonUtil.toJsonString[$t](value)
            $store.string.set($key, json)
          }

@@ -8,7 +8,7 @@ import org.mongodb.scala.bson.conversions
 import org.mongodb.scala.model.Collation
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
+import scribe.Execution.global
 import scala.concurrent.duration.TimeUnit
 
 case class Index private(`type`: IndexType, fields: List[String], properties: IndexProperties = IndexProperties()) {

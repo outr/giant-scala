@@ -3,7 +3,7 @@ package com.outr.giantscala.upgrade
 import com.outr.giantscala.MongoDatabase
 
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
+import scribe.Execution.global
 
 object CreateDatabase extends DatabaseUpgrade {
   override def blockStartup: Boolean = false

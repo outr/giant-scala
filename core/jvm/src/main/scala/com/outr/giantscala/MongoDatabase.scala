@@ -11,7 +11,7 @@ import profig.JsonUtil
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
+import scribe.Execution.global
 import org.mongodb.scala
 import org.mongodb.scala.model.ReplaceOptions
 
@@ -73,16 +73,21 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
     ()
   }
 
-  def init(): Future[Unit] = if (_initialized.compareAndSet(false, true)) {
-    versionStore(DatabaseVersion()).flatMap { version =>
-      val upgrades = versions.toList.filterNot(v => version.upgrades.contains(v.label) && !v.alwaysRun)
-      upgrade(version, upgrades, version.upgrades.isEmpty)
+  def init(): Future[Unit] = scribe.async {
+    if (_initialized.compareAndSet(false, true)) {
+      versionStore(DatabaseVersion()).flatMap { version =>
+        val upgrades = versions.toList.filterNot(v => version.upgrades.contains(v.label) && !v.alwaysRun)
+        upgrade(version, upgrades, version.upgrades.isEmpty)
+      }
+    } else {
+      Future.successful(())
     }
-  } else {
-    Future.successful(())
   }
 
-  private def upgrade(version: DatabaseVersion, upgrades: List[DatabaseUpgrade], newDatabase: Boolean, currentlyBlocking: Boolean = true): Future[Unit] = {
+  private def upgrade(version: DatabaseVersion,
+                      upgrades: List[DatabaseUpgrade],
+                      newDatabase: Boolean,
+                      currentlyBlocking: Boolean = true): Future[Unit] = scribe.async {
     val blocking = upgrades.exists(_.blockStartup)
     val future = upgrades.headOption match {
       case Some(u) => if (!newDatabase || u.applyToNew) {
@@ -112,7 +117,7 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
     }
   }
 
-  def drop(): Future[Unit] = db.drop().toFuture().map(_ => ())
+  def drop(): Future[Unit] = scribe.async(db.drop().toFuture().map(_ => ()))
 
   def dispose(): Unit = {
     client.close()
