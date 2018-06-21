@@ -17,7 +17,7 @@ abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDat
 
   implicit class EnhancedFuture[Result](future: Future[Result]) {
     def either: Future[Either[DBFailure, Result]] = future.map[Either[DBFailure, Result]](Right.apply).recover {
-      case exc: MongoException => Left(DBFailure(exc))
+      case exc: MongoException => Left(DBFailure(scribe.Position.fix(exc)))
     }
   }
 
