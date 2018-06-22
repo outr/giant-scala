@@ -2,7 +2,7 @@ import sbtcrossproject.crossProject
 
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.0.13-SNAPSHOT"
+version in ThisBuild := "1.0.13"
 scalaVersion in ThisBuild := "2.12.6"
 crossScalaVersions in ThisBuild := List("2.12.6", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
@@ -27,7 +27,7 @@ developers in ThisBuild := List(
   Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
 )
 
-val scribeVersion = "2.5.1-SNAPSHOT"
+val scribeVersion = "2.5.1"
 val profigVersion = "2.3.0"
 val reactifyVersion = "2.3.0"
 val mongoScalaDriverVersion = "2.3.0"
