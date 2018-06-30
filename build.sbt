@@ -2,7 +2,7 @@ import sbtcrossproject.crossProject
 
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.0.13"
+version in ThisBuild := "1.0.14-SNAPSHOT"
 scalaVersion in ThisBuild := "2.12.6"
 crossScalaVersions in ThisBuild := List("2.12.6", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
@@ -26,6 +26,8 @@ scmInfo in ThisBuild := Some(
 developers in ThisBuild := List(
   Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
 )
+
+testOptions in ThisBuild += Tests.Argument("-oD")
 
 val scribeVersion = "2.5.1"
 val profigVersion = "2.3.0"
