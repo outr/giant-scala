@@ -1,9 +1,8 @@
 package tests
 
 import com.outr.giantscala._
-import com.outr.giantscala.failure.{DBFailure, FailureType}
+import com.outr.giantscala.failure.FailureType
 import com.outr.giantscala.oplog.Delete
-import org.mongodb.scala.MongoException
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
 import scribe.Logger
@@ -11,9 +10,8 @@ import scribe.format._
 import scribe.modify.ClassNameFilter
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Future
 import scala.language.implicitConversions
-import scala.util.Success
 
 class DBCollectionSpec extends AsyncWordSpec with Matchers {
   "DBCollection" should {
