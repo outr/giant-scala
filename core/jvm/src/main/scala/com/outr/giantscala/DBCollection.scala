@@ -33,12 +33,12 @@ abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDat
 
   lazy val batch: Batch[T] = Batch[T](this)
 
-  def insert(values: Seq[T]): Future[Seq[T]] = scribe.async {
+  def insert(values: Seq[T]): Future[Either[DBFailure, Seq[T]]] = scribe.async {
     if (values.nonEmpty) {
       val docs = values.map(converter.toDocument)
-      collection.insertMany(docs).toFuture().map(_ => values)
+      collection.insertMany(docs).toFuture().map(_ => values).either
     } else {
-      Future.successful(Nil)
+      Future.successful(Right(Nil))
     }
   }
 
@@ -101,7 +101,7 @@ abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDat
     }
   }
 
-  def count(): Future[Long] = scribe.async(collection.count().toFuture())
+  def count(): Future[Long] = scribe.async(collection.countDocuments().toFuture())
 
   def delete(id: String): Future[Either[DBFailure, Unit]] = scribe.async {
     collection.deleteOne(Document("_id" -> id)).toFuture().map(_ => ()).either
