@@ -62,15 +62,17 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
           case OperationType.INSERT => 'i'
           case OperationType.UPDATE | OperationType.REPLACE => 'u'
           case OperationType.DELETE => 'd'
+          case OperationType.INVALIDATE => 'v'
           case opType => throw new RuntimeException(s"Unsupported OperationType: $opType / ${result.getFullDocument}")
         }
+        val documentKey = Option(result.getDocumentKey).map(_.getFirstKey).getOrElse("")
         val op = Operation(
           ts = result.getClusterTime.getValue,
           t = 0,
           h = result.hashCode(),
           v = 0,
           op = opChar,
-          ns = result.getNamespace.getFullName,
+          ns = Option(result.getNamespace).map(_.getFullName).getOrElse(""),
           wall = result.getClusterTime.getValue,
           o = Option(result.getFullDocument)
             .map(d => io.circe.parser.parse(d.toJson()))
@@ -78,7 +80,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
               case Left(_) => None
               case Right(json) => Some(json)
             }
-            .getOrElse(Json.obj("_id" -> Json.fromString(result.getDocumentKey.getFirstKey)))
+            .getOrElse(Json.obj("_id" -> Json.fromString(documentKey)))
         )
         operation := op
       }

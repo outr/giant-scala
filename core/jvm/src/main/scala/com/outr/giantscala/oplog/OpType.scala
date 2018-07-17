@@ -8,6 +8,7 @@ object OpType {
   case object Delete extends OpType
   case object Command extends OpType
   case object Noop extends OpType
+  case object Invalidate extends OpType
 
   def apply(c: Char): OpType = c match {
     case 'i' => Insert
@@ -15,6 +16,7 @@ object OpType {
     case 'd' => Delete
     case 'c' => Command
     case 'n' => Noop
+    case 'v' => Invalidate
     case _ => throw new RuntimeException(s"Unsupported OpType: $c")
   }
 }
