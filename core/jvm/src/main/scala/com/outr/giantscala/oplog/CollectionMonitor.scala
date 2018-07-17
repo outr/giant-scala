@@ -74,7 +74,10 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
           wall = result.getClusterTime.getValue,
           o = Option(result.getFullDocument)
             .map(d => io.circe.parser.parse(d.toJson()))
-            .flatMap(_.toOption)
+            .flatMap {
+              case Left(_) => None
+              case Right(json) => Some(json)
+            }
             .getOrElse(Json.obj("_id" -> Json.fromString(result.getDocumentKey.getFirstKey)))
         )
         operation := op
