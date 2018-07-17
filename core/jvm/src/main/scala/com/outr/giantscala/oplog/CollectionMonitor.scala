@@ -1,7 +1,11 @@
 package com.outr.giantscala.oplog
 
+import com.mongodb.client.model.changestream.OperationType
 import com.outr.giantscala.{DBCollection, ModelObject}
+import io.circe.Json
+import org.mongodb.scala
 import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.model.changestream.ChangeStreamDocument
 import profig.JsonUtil
 import reactify.{Channel, InvocationType, Observer}
 
@@ -51,7 +55,38 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
     * Starts the oplog monitor on the database if it's not already running and begins monitoring for operations relating
     * to this collection. This must be called before any operations can be received by #insert, #update, or #delete.
     */
-  def start(): Unit = {
+  def start(): Unit = if (collection.db.version.major >= 4) {
+    collection.collection.watch[Document]().subscribe(new scala.Observer[ChangeStreamDocument[Document]] {
+      override def onNext(result: ChangeStreamDocument[Document]): Unit = {
+        val opChar = result.getOperationType match {
+          case OperationType.INSERT => 'i'
+          case OperationType.UPDATE | OperationType.REPLACE => 'u'
+          case OperationType.DELETE => 'd'
+          case opType => throw new RuntimeException(s"Unsupported OperationType: $opType / ${result.getFullDocument}")
+        }
+        val op = Operation(
+          ts = result.getClusterTime.getValue,
+          t = 0,
+          h = result.hashCode(),
+          v = 0,
+          op = opChar,
+          ns = result.getNamespace.getFullName,
+          wall = result.getClusterTime.getValue,
+          o = Option(result.getFullDocument)
+            .map(d => io.circe.parser.parse(d.toJson()))
+            .flatMap(_.toOption)
+            .getOrElse(Json.obj("_id" -> Json.fromString(result.getDocumentKey.getFirstKey)))
+        )
+        operation := op
+      }
+
+      override def onError(e: Throwable): Unit = {
+        scribe.error(e)
+      }
+
+      override def onComplete(): Unit = {}
+    })
+  } else {
     collection.db.oplog.startIfNotRunning()
     collection.db.oplog.operations.observe(this)
   }

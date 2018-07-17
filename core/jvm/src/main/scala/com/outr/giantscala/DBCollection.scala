@@ -101,7 +101,7 @@ abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDat
     }
   }
 
-  def count(): Future[Long] = scribe.async(collection.countDocuments().toFuture())
+  def count(): Future[Long] = scribe.async(collection.estimatedDocumentCount().toFuture())
 
   def delete(id: String): Future[Either[DBFailure, Unit]] = scribe.async {
     collection.deleteOne(Document("_id" -> id)).toFuture().map(_ => ()).either

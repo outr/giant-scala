@@ -15,9 +15,21 @@ import scribe.Execution.global
 import org.mongodb.scala
 import org.mongodb.scala.model.ReplaceOptions
 
+import _root_.scala.concurrent._
+import _root_.scala.concurrent.duration.Duration
+
 class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String) {
   private lazy val client = MongoClient(url)
   protected lazy val db: scala.MongoDatabase = client.getDatabase(name)
+
+  lazy val buildInfo: MongoBuildInfo = Await.result(db.runCommand(Document("buildinfo" -> "")).toFuture().map { j =>
+    JsonUtil.fromJsonString[MongoBuildInfo](j.toJson())
+  }, Duration.Inf)
+  object version {
+    lazy val string: String = buildInfo.version
+    lazy val major: Int = buildInfo.versionArray.head
+    lazy val minor: Int = buildInfo.versionArray(1)
+  }
 
   private val _initialized = new AtomicBoolean(false)
   def initialized: Boolean = _initialized.get()

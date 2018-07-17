@@ -54,12 +54,14 @@ class OperationsLog(client: MongoClient) extends Observer[Document] {
     * Stops the monitor on the oplog.
     */
   def stop(): Unit = synchronized {
-    subscription match {
-      case Some(s) => {
-        s.unsubscribe()
-        subscription = None
+    if (isRunning) {
+      subscription match {
+        case Some(s) => {
+          s.unsubscribe()
+          subscription = None
+        }
+        case None => throw new RuntimeException("Not running!")
       }
-      case None => throw new RuntimeException("Not running!")
     }
   }
 

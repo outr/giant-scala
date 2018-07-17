@@ -33,6 +33,10 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         succeed
       }
     }
+    "verify the version" in {
+      val version = Database.version.major
+      version should be >= 3
+    }
     "create successfully" in {
       Database.person shouldNot be(null)
     }
