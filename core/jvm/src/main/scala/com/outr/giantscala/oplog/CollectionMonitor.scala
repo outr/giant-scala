@@ -51,46 +51,56 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
     case op if op.`type` == OpType.Delete => JsonUtil.fromJsonString[Delete](op.o.spaces2)
   }
 
+  private lazy val watcher = new scala.Observer[ChangeStreamDocument[Document]] {
+    override def onNext(result: ChangeStreamDocument[Document]): Unit = {
+      scribe.debug(s"Received document (${collection.name}): ${result.getOperationType} for ${result.getNamespace}")
+      val opChar = result.getOperationType match {
+        case OperationType.INSERT => 'i'
+        case OperationType.UPDATE | OperationType.REPLACE => 'u'
+        case OperationType.DELETE => 'd'
+        case OperationType.INVALIDATE => 'v'
+        case opType => throw new RuntimeException(s"Unsupported OperationType: $opType / ${result.getFullDocument}")
+      }
+      val documentKey = Option(result.getDocumentKey).map(_.getFirstKey).getOrElse("")
+      val op = Operation(
+        ts = result.getClusterTime.getValue,
+        t = 0,
+        h = result.hashCode(),
+        v = 0,
+        op = opChar,
+        ns = Option(result.getNamespace).map(_.getFullName).getOrElse(""),
+        wall = result.getClusterTime.getValue,
+        o = Option(result.getFullDocument)
+          .map(d => io.circe.parser.parse(d.toJson()))
+          .flatMap {
+            case Left(_) => None
+            case Right(json) => Some(json)
+          }
+          .getOrElse(Json.obj("_id" -> Json.fromString(documentKey)))
+      )
+      operation := op
+
+      if (result.getOperationType == OperationType.INVALIDATE) {
+        scribe.warn(s"Invalidated, restarting watcher for ${collection.name}")
+        start()
+      }
+    }
+
+    override def onError(e: Throwable): Unit = {
+      scribe.error(e)
+    }
+
+    override def onComplete(): Unit = {
+      scribe.warn(s"Watcher on ${collection.name} completed")
+    }
+  }
+
   /**
     * Starts the oplog monitor on the database if it's not already running and begins monitoring for operations relating
     * to this collection. This must be called before any operations can be received by #insert, #update, or #delete.
     */
   def start(): Unit = if (collection.db.version.major >= 4) {
-    collection.collection.watch[Document]().subscribe(new scala.Observer[ChangeStreamDocument[Document]] {
-      override def onNext(result: ChangeStreamDocument[Document]): Unit = {
-        val opChar = result.getOperationType match {
-          case OperationType.INSERT => 'i'
-          case OperationType.UPDATE | OperationType.REPLACE => 'u'
-          case OperationType.DELETE => 'd'
-          case OperationType.INVALIDATE => 'v'
-          case opType => throw new RuntimeException(s"Unsupported OperationType: $opType / ${result.getFullDocument}")
-        }
-        val documentKey = Option(result.getDocumentKey).map(_.getFirstKey).getOrElse("")
-        val op = Operation(
-          ts = result.getClusterTime.getValue,
-          t = 0,
-          h = result.hashCode(),
-          v = 0,
-          op = opChar,
-          ns = Option(result.getNamespace).map(_.getFullName).getOrElse(""),
-          wall = result.getClusterTime.getValue,
-          o = Option(result.getFullDocument)
-            .map(d => io.circe.parser.parse(d.toJson()))
-            .flatMap {
-              case Left(_) => None
-              case Right(json) => Some(json)
-            }
-            .getOrElse(Json.obj("_id" -> Json.fromString(documentKey)))
-        )
-        operation := op
-      }
-
-      override def onError(e: Throwable): Unit = {
-        scribe.error(e)
-      }
-
-      override def onComplete(): Unit = {}
-    })
+    collection.collection.watch[Document]().subscribe(watcher)
   } else {
     collection.db.oplog.startIfNotRunning()
     collection.db.oplog.operations.observe(this)
@@ -99,7 +109,9 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
   /**
     * Stops monitoring the oplog for operations related to this collection. Does not stop the oplog from running.
     */
-  def stop(): Unit = {
+  def stop(): Unit = if (collection.db.version.major >= 4) {
+    // TODO: support stopping
+  } else {
     collection.db.oplog.operations.detach(this)
   }
 
