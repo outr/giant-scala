@@ -37,7 +37,7 @@ val macroParadiseVersion = "2.1.1"
 val scalatestVersion: String = "3.0.5"
 
 lazy val root = project.in(file("."))
-  .aggregate(macrosJS, macrosJVM, coreJS, coreJVM)
+  .aggregate(macrosJS, macrosJVM, coreJS, coreJVM, backup)
   .settings(
     name := "giant-scala",
     publish := {},
@@ -76,3 +76,6 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
 
 lazy val coreJS = core.js
 lazy val coreJVM = core.jvm
+
+lazy val backup = project.in(file("backup"))
+  .dependsOn(coreJVM)
