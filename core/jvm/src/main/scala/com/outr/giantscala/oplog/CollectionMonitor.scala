@@ -81,7 +81,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
       operation := op
 
       if (result.getOperationType == OperationType.INVALIDATE) {
-        scribe.warn(s"Invalidated, restarting watcher for ${collection.name}")
+        scribe.debug(s"Invalidated, restarting watcher for ${collection.name}")
         start()
       }
     }
@@ -91,7 +91,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
     }
 
     override def onComplete(): Unit = {
-      scribe.warn(s"Watcher on ${collection.name} completed")
+      scribe.debug(s"Watcher on ${collection.name} completed")
     }
   }
 

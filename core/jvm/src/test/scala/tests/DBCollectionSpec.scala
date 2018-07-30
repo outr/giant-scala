@@ -144,7 +144,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
   }
 
   def waitFor(condition: => Assertion,
-              time: Long = 90000L,
+              time: Long = 15000L,
               startTime: Long = System.currentTimeMillis()): Future[Assertion] = {
     try {
       val result: Assertion = condition

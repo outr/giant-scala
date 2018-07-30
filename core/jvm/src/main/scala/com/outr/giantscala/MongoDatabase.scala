@@ -15,6 +15,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scribe.Execution.global
 import org.mongodb.scala
+import org.mongodb.scala.connection.ClusterSettings
 import org.mongodb.scala.connection.ClusterSettings.Builder
 import org.mongodb.scala.model.ReplaceOptions
 
@@ -26,18 +27,20 @@ class MongoDatabase(val name: String,
                     credentials: Option[Credentials] = MongoDatabase.credentials) {
   assert(urls.nonEmpty, "At least one URL must be included")
 
-  private lazy val settings = MongoClientSettings.builder().applyToClusterSettings((b: Builder) => {
-    val credentialsString = credentials match {
-      case Some(c) => s"${c.username}:${c.password}@"
-      case None => ""
+  private val settings = MongoClientSettings.builder().applyToClusterSettings(new Block[ClusterSettings.Builder] {
+    override def apply(b: Builder): Unit = {
+      val credentialsString = credentials match {
+        case Some(c) => s"${c.username}:${c.password}@"
+        case None => ""
+      }
+      val url = s"mongodb://$credentialsString${urls.mkString(",")}"
+      b.applyConnectionString(new ConnectionString(url))
     }
-    val url = s"mongodb://$credentialsString${urls.mkString(",")}"
-    b.applyConnectionString(new ConnectionString(url))
   }).build()
-  private lazy val client = MongoClient(settings)
-  protected lazy val db: scala.MongoDatabase = client.getDatabase(name)
+  private val client = MongoClient(settings)
+  protected val db: scala.MongoDatabase = client.getDatabase(name)
 
-  lazy val buildInfo: MongoBuildInfo = Await.result(db.runCommand(Document("buildinfo" -> "")).toFuture().map { j =>
+  val buildInfo: MongoBuildInfo = Await.result(db.runCommand(Document("buildinfo" -> "")).toFuture().map { j =>
     JsonUtil.fromJsonString[MongoBuildInfo](j.toJson())
   }, Duration.Inf)
   object version {
