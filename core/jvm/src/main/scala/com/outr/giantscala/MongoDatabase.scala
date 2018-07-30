@@ -2,24 +2,39 @@ package com.outr.giantscala
 
 import java.util.concurrent.atomic.AtomicBoolean
 
+import com.mongodb.{Block, ConnectionString}
+
 import scala.language.experimental.macros
 import com.outr.giantscala.oplog.OperationsLog
 import com.outr.giantscala.upgrade.{CreateDatabase, DatabaseUpgrade}
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.{MongoClient, MongoCollection}
-import profig.JsonUtil
+import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoCollection}
+import profig.{JsonUtil, Profig}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scribe.Execution.global
 import org.mongodb.scala
+import org.mongodb.scala.connection.ClusterSettings.Builder
 import org.mongodb.scala.model.ReplaceOptions
 
 import _root_.scala.concurrent._
 import _root_.scala.concurrent.duration.Duration
 
-class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String) {
-  private lazy val client = MongoClient(url)
+class MongoDatabase(val name: String,
+                    val urls: List[MongoDBServer] = MongoDatabase.urls,
+                    credentials: Option[Credentials] = MongoDatabase.credentials) {
+  assert(urls.nonEmpty, "At least one URL must be included")
+
+  private lazy val settings = MongoClientSettings.builder().applyToClusterSettings((b: Builder) => {
+    val credentialsString = credentials match {
+      case Some(c) => s"${c.username}:${c.password}@"
+      case None => ""
+    }
+    val url = s"mongodb://$credentialsString${urls.mkString(",")}"
+    b.applyConnectionString(new ConnectionString(url))
+  }).build()
+  private lazy val client = MongoClient(settings)
   protected lazy val db: scala.MongoDatabase = client.getDatabase(name)
 
   lazy val buildInfo: MongoBuildInfo = Await.result(db.runCommand(Document("buildinfo" -> "")).toFuture().map { j =>
@@ -142,4 +157,19 @@ class MongoDatabase(url: String = "mongodb://localhost:27017", val name: String)
   }
 
   private[giantscala] def getCollection(name: String): MongoCollection[Document] = db.getCollection(name)
+}
+
+object MongoDatabase {
+  def urls: List[MongoDBServer] = Profig("giantscala.MongoDatabase.urls")
+    .as[Option[List[MongoDBServer]]]
+    .getOrElse(List(MongoDBServer.default))
+
+  def credentials: Option[Credentials] = {
+    val config = Profig("giantscala.MongoDatabase.credentials")
+    if (config.exists()) {
+      Some(config.as[Credentials])
+    } else {
+      None
+    }
+  }
 }
