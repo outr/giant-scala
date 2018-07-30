@@ -24,17 +24,25 @@ import _root_.scala.concurrent.duration.Duration
 
 class MongoDatabase(val name: String,
                     val urls: List[MongoDBServer] = MongoDatabase.urls,
-                    credentials: Option[Credentials] = MongoDatabase.credentials) {
+                    credentials: Option[Credentials] = MongoDatabase.credentials,
+                    options: List[ConnectionOption] = Nil) {
   assert(urls.nonEmpty, "At least one URL must be included")
 
+  val connectionString: String = {
+    val credentialsString = credentials match {
+      case Some(c) => s"${c.username}:${c.password}@"
+      case None => ""
+    }
+    val optionsString = options match {
+      case Nil => ""
+      case _ => options.map(_.toString).mkString("/?", "&", "")
+    }
+    s"mongodb://$credentialsString${urls.mkString(",")}$optionsString"
+  }
   private val settings = MongoClientSettings.builder().applyToClusterSettings(new Block[ClusterSettings.Builder] {
     override def apply(b: Builder): Unit = {
-      val credentialsString = credentials match {
-        case Some(c) => s"${c.username}:${c.password}@"
-        case None => ""
-      }
-      val url = s"mongodb://$credentialsString${urls.mkString(",")}"
-      b.applyConnectionString(new ConnectionString(url))
+
+      b.applyConnectionString(new ConnectionString(connectionString))
     }
   }).build()
   private val client = MongoClient(settings)
