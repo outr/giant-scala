@@ -7,10 +7,11 @@ import org.mongodb.scala
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.changestream.ChangeStreamDocument
 import profig.JsonUtil
-import reactify.{Channel, InvocationType, Observer}
+import reactify.reaction.{Reaction, ReactionStatus}
+import reactify._
 
-class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends Observer[Operation] {
-  private lazy val ns: String = s"${collection.db.name}.${collection.name}"
+class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends Reaction[Operation] {
+  private lazy val ns: String = s"${collection.db.name}.${collection.collectionName}"
 
   /**
     * Receives all operations for this collection
@@ -53,7 +54,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
 
   private lazy val watcher = new scala.Observer[ChangeStreamDocument[Document]] {
     override def onNext(result: ChangeStreamDocument[Document]): Unit = {
-      scribe.debug(s"Received document (${collection.name}): ${result.getOperationType} for ${result.getNamespace}")
+      scribe.debug(s"Received document (${collection.collectionName}): ${result.getOperationType} for ${result.getNamespace}")
       val opChar = result.getOperationType match {
         case OperationType.INSERT => 'i'
         case OperationType.UPDATE | OperationType.REPLACE => 'u'
@@ -81,7 +82,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
       operation := op
 
       if (result.getOperationType == OperationType.INVALIDATE) {
-        scribe.debug(s"Invalidated, restarting watcher for ${collection.name}")
+        scribe.debug(s"Invalidated, restarting watcher for ${collection.collectionName}")
         start()
       }
     }
@@ -91,7 +92,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
     }
 
     override def onComplete(): Unit = {
-      scribe.debug(s"Watcher on ${collection.name} completed")
+      scribe.debug(s"Watcher on ${collection.collectionName} completed")
     }
   }
 
@@ -103,7 +104,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
     collection.collection.watch[Document]().subscribe(watcher)
   } else {
     collection.db.oplog.startIfNotRunning()
-    collection.db.oplog.operations.observe(this)
+    collection.db.oplog.operations.reactions += this
   }
 
   /**
@@ -112,10 +113,13 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends O
   def stop(): Unit = if (collection.db.version.major >= 4) {
     // TODO: support stopping
   } else {
-    collection.db.oplog.operations.detach(this)
+    collection.db.oplog.operations.reactions -= this
   }
 
-  override def apply(op: Operation, `type`: InvocationType): Unit = if (op.ns == ns) {
-    operation := op
+  override def apply(op: Operation, previous: Option[Operation]): ReactionStatus = {
+    if (op.ns == ns) {
+      operation := op
+    }
+    ReactionStatus.Continue
   }
 }

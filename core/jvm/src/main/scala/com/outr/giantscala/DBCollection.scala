@@ -12,7 +12,7 @@ import scala.concurrent.Future
 import scribe.Execution.global
 import scala.language.implicitConversions
 
-abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDatabase) {
+abstract class DBCollection[T <: ModelObject](val collectionName: String, val db: MongoDatabase) {
   db.addCollection(this)
 
   implicit class EnhancedFuture[Result](future: Future[Result]) {
@@ -21,7 +21,7 @@ abstract class DBCollection[T <: ModelObject](val name: String, val db: MongoDat
     }
   }
 
-  lazy val collection: MongoCollection[Document] = db.getCollection(name)
+  lazy val collection: MongoCollection[Document] = db.getCollection(collectionName)
 
   val converter: Converter[T]
 

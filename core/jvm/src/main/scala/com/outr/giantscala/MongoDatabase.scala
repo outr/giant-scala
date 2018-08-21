@@ -172,7 +172,7 @@ class MongoDatabase(val name: String,
 
 object MongoDatabase {
   def urls: List[MongoDBServer] = Profig("giantscala.MongoDatabase.urls")
-    .as[Option[List[MongoDBServer]]]
+    .opt[List[MongoDBServer]]
     .getOrElse(List(MongoDBServer.default))
 
   def credentials: Option[Credentials] = {
