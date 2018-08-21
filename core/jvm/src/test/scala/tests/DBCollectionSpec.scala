@@ -12,6 +12,7 @@ import scribe.modify.ClassNameFilter
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.language.implicitConversions
+import org.mongodb.scala
 
 class DBCollectionSpec extends AsyncWordSpec with Matchers {
   "DBCollection" should {
@@ -141,6 +142,29 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         p._id should be("personA")
       }
     }
+    "query Person A back in a raw aggregate query" in {
+      Database.person.collection.aggregate(List(
+        Document("""{$match: {name: "Person A"}}""")
+      )).toFuture().map(_.map(Database.person.converter.fromDocument)).map { people =>
+        people.map(_.name) should be(List("Person A"))
+      }
+    }
+    "query Person A back in a aggregate DSL query" in {
+      import Database.person._
+      aggregate.`match`(name === "Person A").toFuture.map { people =>
+        people.map(_.name) should be(List("Person A"))
+      }
+    }
+    "query Person A back in a aggregate DSL query with conversion" in {
+      import Database.person._
+      aggregate
+        .project(name)
+        .`match`(name === "Person A")
+        .as[PersonName]
+        .toFuture.map { people =>
+          people.map(_.name) should be(List("Person A"))
+      }
+    }
     "stop the oplog" in {
       noException should be thrownBy Database.oplog.stop()
     }
@@ -172,11 +196,16 @@ case class Person(name: String,
                   modified: Long = System.currentTimeMillis(),
                   _id: String) extends ModelObject
 
-@TypedCollection[Person]
-object Person
+case class PersonName(name: String)
 
 class PersonCollection extends DBCollection[Person]("person", Database) {
   import scribe.Execution.global
+
+  val name: Field[String] = Field("name")
+  val age: Field[Int] = Field("age")
+  val created: Field[Long] = Field("created")
+  val modified: Field[Long] = Field("modified")
+  val _id: Field[String] = Field("_id")
 
   override val converter: Converter[Person] = Converter.auto[Person]
 
@@ -185,12 +214,14 @@ class PersonCollection extends DBCollection[Person]("person", Database) {
   )
 
   def byName(name: String): Future[List[Person]] = {
-    collection.find(Document(Person.name -> name)).map(converter.fromDocument).toFuture().map(_.toList)
+   aggregate.`match`(this.name === name).toFuture
   }
 }
 
 object Database extends MongoDatabase(
     name = "giant-scala-test",
     options = List(ConnectionOption.WaitQueueMultiple(100))) {
+  def theDB: scala.MongoDatabase = db
+
   val person: PersonCollection = new PersonCollection   // TODO: typed[PersonCollection]
 }

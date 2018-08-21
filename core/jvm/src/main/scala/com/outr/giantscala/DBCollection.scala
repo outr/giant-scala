@@ -1,5 +1,6 @@
 package com.outr.giantscala
 
+import com.outr.giantscala.dsl.{AggregateBuilder, Implicits}
 import com.outr.giantscala.failure.{DBFailure, FailureType}
 import com.outr.giantscala.oplog.CollectionMonitor
 import org.mongodb.scala.{BulkWriteResult, MongoCollection, MongoException}
@@ -10,9 +11,10 @@ import org.mongodb.scala.model.{Aggregates, ReplaceOptions}
 import scala.language.experimental.macros
 import scala.concurrent.Future
 import scribe.Execution.global
+
 import scala.language.implicitConversions
 
-abstract class DBCollection[T <: ModelObject](val collectionName: String, val db: MongoDatabase) {
+abstract class DBCollection[T <: ModelObject](val collectionName: String, val db: MongoDatabase) extends Implicits {
   db.addCollection(this)
 
   implicit class EnhancedFuture[Result](future: Future[Result]) {
@@ -32,6 +34,8 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
   def create(): Future[Unit] = Future.sequence(indexes.map(_.create(collection))).map(_ => ())    // Create indexes
 
   lazy val batch: Batch[T] = Batch[T](this)
+
+  lazy val aggregate: AggregateBuilder[T, T] = AggregateBuilder(this, converter)
 
   def insert(values: Seq[T]): Future[Either[DBFailure, Seq[T]]] = scribe.async {
     if (values.nonEmpty) {

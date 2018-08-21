@@ -47,4 +47,12 @@ object Macros {
        }
      """
   }
+
+  def aggregateAs[T](c: blackbox.Context)(implicit t: c.WeakTypeTag[T]): c.Tree = {
+    import c.universe._
+
+    q"""
+       ${c.prefix}.as[$t](com.outr.giantscala.Converter.auto[$t])
+     """
+  }
 }
