@@ -151,20 +151,29 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
     }
     "query Person A back in a aggregate DSL query" in {
       import Database.person._
-      aggregate.`match`(name === "Person A").toFuture.map { people =>
-        people.map(_.name) should be(List("Person A"))
-      }
+      aggregate
+        .`match`(name === "Person A")
+        .toFuture
+        .map { people =>
+          people.map(_.name) should be(List("Person A"))
+        }
     }
     "query Person A back in a aggregate DSL query with conversion" in {
       import Database.person._
       aggregate
-        .project(name)
+        .project(name.include, _id.exclude)
         .`match`(name === "Person A")
         .as[PersonName]
         .toFuture.map { people =>
           people.map(_.name) should be(List("Person A"))
-      }
+        }
     }
+    // TODO: verify the following scenarios work and ideally create an output format to support running in REPL
+    // TODO: project(Document("status" -> Document("$objectToArray" -> "$status"))),
+    // TODO: project(Document("status" -> Document("$arrayElemAt" -> List(BsonString("$status.k"), BsonInt32(0))))),
+    // TODO: group("$status", sum("count", 1)),
+    // TODO: project(Document("_id" -> 0, "status" -> Document("name" -> "$_id", "count" -> "$count"))),
+    // TODO: group("counts", addToSet("counts", "$status"))
     "stop the oplog" in {
       noException should be thrownBy Database.oplog.stop()
     }

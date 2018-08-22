@@ -14,9 +14,7 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
   def `match`(conditions: MatchCondition*): AggregateBuilder[Type, Out] = {
     withPipeline(AggregateMatch(conditions.toList))
   }
-  def project(fields: Field[_]): AggregateBuilder[Type, Out] = {
-    withPipeline()
-  }
+  def project(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateProject(fields.toList))
 
   def as[T](converter: Converter[T]): AggregateBuilder[Type, T] = copy(converter = converter)
   def as[T]: AggregateBuilder[Type, T] = macro Macros.aggregateAs[T]
