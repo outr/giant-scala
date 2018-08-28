@@ -1,5 +1,5 @@
 package com.outr.giantscala.dsl
 
-import org.mongodb.scala.bson.conversions.Bson
+import io.circe.Json
 
-case class MatchCondition(bson: Bson)
+case class MatchCondition(json: Json)

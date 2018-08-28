@@ -1,31 +1,30 @@
 package com.outr.giantscala.dsl
 
 import com.outr.giantscala.Field
-import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.bson.collection.mutable.{Document => MDocument}
-import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Aggregates.project
+import io.circe.Json
 
 case class AggregateProject(fields: List[ProjectField]) extends AggregateInstruction {
-  override lazy val bson: Bson = {
-    val document = MDocument()
-    fields.foreach(_.build(document))
-    project(document)
+  override def json: Json = {
+    val projection = Json.obj(fields.map(f => f.key -> f.value): _*)
+    Json.obj("$project" -> projection)
   }
 }
 
 sealed trait ProjectField {
-  def build(document: MDocument): Unit
+  def key: String
+  def value: Json
 }
 
 object ProjectField {
   case class Include[T](field: Field[T]) extends ProjectField {
-    override def build(document: MDocument): Unit = document += field.name -> 1
+    override def key: String = field.name
+    override def value: Json = Json.fromInt(1)
   }
   case class Exclude[T](field: Field[T]) extends ProjectField {
-    override def build(document: MDocument): Unit = document += field.name -> 0
+    override def key: String = field.name
+    override def value: Json = Json.fromInt(0)
   }
-  case class Operator[T](field: Field[T], value: Document) extends ProjectField {
-    override def build(document: MDocument): Unit = document += field.name -> value
+  case class Operator[T](field: Field[T], value: Json) extends ProjectField {
+    override def key: String = field.name
   }
 }

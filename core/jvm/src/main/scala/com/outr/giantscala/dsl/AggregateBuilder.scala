@@ -1,6 +1,8 @@
 package com.outr.giantscala.dsl
 
 import com.outr.giantscala._
+import io.circe.{Json, Printer}
+import org.mongodb.scala.bson.collection.immutable.Document
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.experimental.macros
@@ -19,7 +21,19 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
   def as[T](converter: Converter[T]): AggregateBuilder[Type, T] = copy(converter = converter)
   def as[T]: AggregateBuilder[Type, T] = macro Macros.aggregateAs[T]
 
+  def json: List[Json] = pipeline.map(_.json)
+  def jsonStrings: List[String] = json.map(_.pretty(Printer.spaces2))
+  def documents: List[Document] = jsonStrings.map(Document.apply)
+
+  def toQuery(includeSpaces: Boolean = true): String = {
+    val printer = if (includeSpaces) {
+      Printer.spaces2
+    } else {
+      Printer.noSpaces
+    }
+    s"db.${collection.collectionName}.aggregate(${Json.arr(json: _*).pretty(printer)})"
+  }
   def toFuture(implicit executionContext: ExecutionContext): Future[List[Out]] = {
-    collection.collection.aggregate(pipeline.map(_.bson)).toFuture().map(_.map(converter.fromDocument).toList)
+    collection.collection.aggregate(documents).toFuture().map(_.map(converter.fromDocument).toList)
   }
 }

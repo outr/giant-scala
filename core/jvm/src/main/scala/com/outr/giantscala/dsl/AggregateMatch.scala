@@ -1,9 +1,7 @@
 package com.outr.giantscala.dsl
 
-import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Aggregates.`match`
-import org.mongodb.scala.model.Filters.and
+import io.circe.Json
 
 case class AggregateMatch(conditions: List[MatchCondition]) extends AggregateInstruction {
-  override lazy val bson: Bson = `match`(and(conditions.map(_.bson): _*))
+  override def json: Json = Json.obj("$match" -> Json.obj("$and" -> Json.arr(conditions.map(_.json): _*)))
 }

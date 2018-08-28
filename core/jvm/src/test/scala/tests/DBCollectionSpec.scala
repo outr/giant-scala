@@ -168,6 +168,11 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
           people.map(_.name) should be(List("Person A"))
         }
     }
+    "verify $objectToArray converts to proper query" in {
+      import Database.person._
+      val query = aggregate.project(name.objectToArray("names")).toQuery(includeSpaces = false)
+      query should be("""db.person.aggregate([{"$project":{"name":{"$objectToArray":"$names"}}}])""")
+    }
     // TODO: verify the following scenarios work and ideally create an output format to support running in REPL
     // TODO: project(Document("status" -> Document("$objectToArray" -> "$status"))),
     // TODO: project(Document("status" -> Document("$arrayElemAt" -> List(BsonString("$status.k"), BsonInt32(0))))),

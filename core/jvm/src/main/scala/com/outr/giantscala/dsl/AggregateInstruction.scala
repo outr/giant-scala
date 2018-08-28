@@ -1,7 +1,7 @@
 package com.outr.giantscala.dsl
 
-import org.mongodb.scala.bson.conversions.Bson
+import io.circe.Json
 
 trait AggregateInstruction {
-  def bson: Bson
+  def json: Json
 }
