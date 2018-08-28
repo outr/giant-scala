@@ -90,12 +90,23 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
   }
 
   def sample(size: Int, retries: Int = 2): Future[Either[DBFailure, List[T]]] = scribe.async {
-    collection.aggregate(List(
-      Aggregates.sample(size)
-    )).toFuture()
-      .map(_.map(converter.fromDocument).toList).either.flatMap {
-        case Left(f) if f.`type` == FailureType.SampleNoNonDuplicate && retries > 0 => sample(size, retries - 1)
-        case result => Future.successful(result)
+    aggregate.sample(size).toFuture.either.flatMap {
+      case Left(f) if f.`type` == FailureType.SampleNoNonDuplicate && retries > 0 => sample(size, retries - 1)
+      case result => Future.successful(result)
+    }
+  }
+
+  def largeSample(size: Int, groupSize: Int, retries: Int = 2, samples: Set[T]): Future[Either[DBFailure, Set[T]]] = scribe.async {
+    val querySize = math.min(size - samples.size, groupSize)
+    if (querySize > 0) {
+      sample(querySize, retries).flatMap {
+        case Left(dbf) => Future.successful(Left(dbf))
+        case Right(values) => {
+          largeSample(size, groupSize, retries, samples ++ values)
+        }
+      }
+    } else {
+      Future.successful(Right(samples))
     }
   }
 
