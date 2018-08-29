@@ -182,12 +182,14 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
     "verify a complex query" in {
       import Database.person._
       val status = field[String]("status")
+      val count = field[String]("count")
+      val counts = field[String]("counts")
       val query = aggregate
-        .project(status.objectToArray("$status"))
-        .project(status.arrayElemAt("$status.k", 0))
-        .group(_id.set("$status"), field("count").sum)
-        .project(_id.exclude, status.set(name.set("$_id"), field("count").set("$count")))
-        .group(_id.set("counts"), status.addToSet("counts"))
+        .project(status.objectToArray(status))
+        .project(status.arrayElemAt(status.key, 0))
+        .group(_id.set(status.op), sum("count"))
+        .project(_id.exclude, status.set(name.set(_id.op), count.set(count.op)))
+        .group(_id.set(counts), status.addToSet(counts))
         .toQuery(includeSpaces = false)
       query should be("""db.person.aggregate([{"$project":{"status":{"$objectToArray":"$status"}}},{"$project":{"status":{"$arrayElemAt":["$status.k",0]}}},{"$group":{"_id":"$status","count":{"$sum":1}}},{"$project":{"_id":0,"status":{"name":"$_id","count":"$count"}}},{"$group":{"_id":"counts","counts":{"$addToSet":"$status"}}}])""")
     }
@@ -236,7 +238,7 @@ class PersonCollection extends DBCollection[Person]("person", Database) {
   override val converter: Converter[Person] = Converter.auto[Person]
 
   override def indexes: List[Index] = List(
-    Index.Ascending("name").unique
+    name.index.ascending.unique
   )
 
   def byName(name: String): Future[List[Person]] = {

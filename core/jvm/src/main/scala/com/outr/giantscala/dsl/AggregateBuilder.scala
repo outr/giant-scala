@@ -20,6 +20,11 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
   def group(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateGroup(fields.toList))
   def sample(size: Int): AggregateBuilder[Type, Out] = withPipeline(AggregateSample(size))
 
+  def opt[T](option: Option[T])
+            (f: (AggregateBuilder[Type, Out], T) => AggregateBuilder[Type, Out]): AggregateBuilder[Type, Out] = {
+    option.map(t => f(this, t)).getOrElse(this)
+  }
+
   def as[T](converter: Converter[T]): AggregateBuilder[Type, T] = copy(converter = converter)
   def as[T]: AggregateBuilder[Type, T] = macro Macros.aggregateAs[T]
 
