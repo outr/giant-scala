@@ -37,7 +37,7 @@ val macroParadiseVersion = "2.1.1"
 val scalatestVersion: String = "3.0.5"
 
 lazy val root = project.in(file("."))
-  .aggregate(macrosJS, macrosJVM, coreJS, coreJVM, plugin, backup)
+  .aggregate(macrosJS, macrosJVM, coreJS, coreJVM)
   .settings(
     name := "giant-scala",
     publish := {},
