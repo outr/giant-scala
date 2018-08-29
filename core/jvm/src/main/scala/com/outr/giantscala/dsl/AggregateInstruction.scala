@@ -2,6 +2,6 @@ package com.outr.giantscala.dsl
 
 import io.circe.Json
 
-trait AggregateInstruction {
+trait AggregateInstruction extends Implicits {
   def json: Json
 }

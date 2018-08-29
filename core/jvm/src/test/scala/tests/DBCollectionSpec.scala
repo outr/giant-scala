@@ -168,17 +168,29 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
           people.map(_.name) should be(List("Person A"))
         }
     }
+    "verify $group with $addToSet" in {
+      import Database.person._
+      val query = aggregate.group(_id.set("names"), name.addToSet("names")).toQuery(includeSpaces = false)
+      println(query)
+      query should be("""db.person.aggregate([{"$group":{"_id":"names","names":{"$addToSet":"$name"}}}])""")
+    }
     "verify $objectToArray converts to proper query" in {
       import Database.person._
       val query = aggregate.project(name.objectToArray("names")).toQuery(includeSpaces = false)
       query should be("""db.person.aggregate([{"$project":{"name":{"$objectToArray":"$names"}}}])""")
     }
-    // TODO: verify the following scenarios work and ideally create an output format to support running in REPL
-    // TODO: project(Document("status" -> Document("$objectToArray" -> "$status"))),
-    // TODO: project(Document("status" -> Document("$arrayElemAt" -> List(BsonString("$status.k"), BsonInt32(0))))),
-    // TODO: group("$status", sum("count", 1)),
-    // TODO: project(Document("_id" -> 0, "status" -> Document("name" -> "$_id", "count" -> "$count"))),
-    // TODO: group("counts", addToSet("counts", "$status"))
+    "verify a complex query" in {
+      import Database.person._
+      val status = field[String]("status")
+      val query = aggregate
+        .project(status.objectToArray("$status"))
+        .project(status.arrayElemAt("$status.k", 0))
+        .group(_id.set("$status"), field("count").sum)
+        .project(_id.exclude, status.set(name.set("$_id"), field("count").set("$count")))
+        .group(_id.set("counts"), status.addToSet("counts"))
+        .toQuery(includeSpaces = false)
+      query should be("""db.person.aggregate([{"$project":{"status":{"$objectToArray":"$status"}}},{"$project":{"status":{"$arrayElemAt":["$status.k",0]}}},{"$group":{"_id":"$status","count":{"$sum":1}}},{"$project":{"_id":0,"status":{"name":"$_id","count":"$count"}}},{"$group":{"_id":"counts","counts":{"$addToSet":"$status"}}}])""")
+    }
     "stop the oplog" in {
       noException should be thrownBy Database.oplog.stop()
     }

@@ -17,6 +17,7 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
     withPipeline(AggregateMatch(conditions.toList))
   }
   def project(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateProject(fields.toList))
+  def group(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateGroup(fields.toList))
   def sample(size: Int): AggregateBuilder[Type, Out] = withPipeline(AggregateSample(size))
 
   def as[T](converter: Converter[T]): AggregateBuilder[Type, T] = copy(converter = converter)
