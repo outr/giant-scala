@@ -1,6 +1,6 @@
 # giant-scala
 
-[![Build Status](https://travis-ci.org/outr/giant-scala.svg?branch=master)](https://travis-ci.org/outr/giantscala)
+[![Build Status](https://travis-ci.org/outr/giantscala.svg?branch=master)](https://travis-ci.org/outr/giantscala)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/outr/giantscala)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.outr/giant-scala_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.outr/giant-scala_2.12)
 [![Latest version](https://index.scala-lang.org/outr/giantscala/giant-scala/latest.svg)](https://index.scala-lang.org/outr/giantscala)
