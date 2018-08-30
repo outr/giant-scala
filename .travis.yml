@@ -3,6 +3,8 @@ dist: trusty
 language: scala
 scala:
   - 2.12.6
+services:
+  - mongodb
 jdk:
   - oraclejdk8
 script:
