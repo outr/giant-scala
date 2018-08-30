@@ -14,7 +14,7 @@ import scala.concurrent.Future
 import scala.language.implicitConversions
 
 class DBCollectionSpec extends AsyncWordSpec with Matchers {
-  private val testMonitoring = false
+  private val testMonitoring = true
 
   "DBCollection" should {
     var inserts = ListBuffer.empty[Person]

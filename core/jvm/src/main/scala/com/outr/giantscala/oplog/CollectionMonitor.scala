@@ -4,11 +4,14 @@ import com.mongodb.client.model.changestream.OperationType
 import com.outr.giantscala.{DBCollection, ModelObject}
 import io.circe.Json
 import org.mongodb.scala
+import org.mongodb.scala.bson.BsonTimestamp
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.changestream.ChangeStreamDocument
+import org.mongodb.scala.model.changestream.{ChangeStreamDocument, FullDocument}
 import profig.JsonUtil
 import reactify.reaction.{Reaction, ReactionStatus}
 import reactify._
+
+import _root_.scala.concurrent.duration._
 
 class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends Reaction[Operation] {
   private lazy val ns: String = s"${collection.db.name}.${collection.collectionName}"
@@ -52,7 +55,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends R
     case op if op.`type` == OpType.Delete => JsonUtil.fromJsonString[Delete](op.o.spaces2)
   }
 
-  private lazy val watcher = new scala.Observer[ChangeStreamDocument[Document]] {
+  private lazy val watcher: scala.Observer[ChangeStreamDocument[Document]] = new scala.Observer[ChangeStreamDocument[Document]] {
     override def onNext(result: ChangeStreamDocument[Document]): Unit = {
       scribe.debug(s"Received document (${collection.collectionName}): ${result.getOperationType} for ${result.getNamespace}")
       val opChar = result.getOperationType match {
@@ -83,7 +86,8 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends R
 
       if (result.getOperationType == OperationType.INVALIDATE) {
         scribe.debug(s"Invalidated, restarting watcher for ${collection.collectionName}")
-        start()
+        val timestamp = new BsonTimestamp(result.getClusterTime.getTime, result.getClusterTime.getInc + 1)
+        subscribe(Some(timestamp))
       }
     }
 
@@ -100,11 +104,19 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends R
     * Starts the oplog monitor on the database if it's not already running and begins monitoring for operations relating
     * to this collection. This must be called before any operations can be received by #insert, #update, or #delete.
     */
-  def start(): Unit = if (collection.db.version.major >= 4) {
-    collection.collection.watch[Document]().subscribe(watcher)
-  } else {
+  def start(): Unit = if (collection.db.useOplog) {
     collection.db.oplog.startIfNotRunning()
     collection.db.oplog.operations.reactions += this
+  } else {
+    subscribe()
+  }
+
+  private def subscribe(startAt: Option[BsonTimestamp] = None, awaitTime: Duration = 10.hours): Unit = {
+    var w = collection.collection.watch[Document]().maxAwaitTime(awaitTime).fullDocument(FullDocument.UPDATE_LOOKUP)
+    startAt.foreach { timestamp =>
+      w = w.startAtOperationTime(timestamp)
+    }
+    w.subscribe(watcher)
   }
 
   /**

@@ -56,6 +56,7 @@ class MongoDatabase(val name: String,
     lazy val major: Int = buildInfo.versionArray.head
     lazy val minor: Int = buildInfo.versionArray(1)
   }
+  var useOplog: Boolean = version.major < 4
 
   private val _initialized = new AtomicBoolean(false)
   def initialized: Boolean = _initialized.get()
