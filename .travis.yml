@@ -3,11 +3,15 @@ dist: trusty
 language: scala
 scala:
   - 2.12.6
-services:
-  - mongodb
+env:
+  - MONGODB=4.0.2
+install:
+  - wget http://fastdl.mongodb.org/linux/mongodb-linux-x86_64-${MONGODB}.tgz
+  - tar xzf mongodb-linux-x86_64-${MONGODB}.tgz
 before_script:
-  - echo "replSet = myReplSetName" | sudo tee -a /etc/mongodb.conf
-  - sudo service mongodb restart
+  - echo "replSet = rs0" | sudo tee -a /etc/mongodb.conf
+  - mkdir ${PWD}/mongodb-linux-x86_64-${MONGODB}/data
+  - ${PWD}/mongodb-linux-x86_64-${MONGODB}/bin/mongod --dbpath ${PWD}/mongodb-linux-x86_64-${MONGODB}/data --logpath ${PWD}/mongodb-linux-x86_64-${MONGODB}/mongodb.log --config /etc/mongodb.conf --fork
   - sleep 20
   - mongo --eval 'rs.initiate()'
   - sleep 15
