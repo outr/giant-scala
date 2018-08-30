@@ -4,7 +4,7 @@
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/outr/giant-scala)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.outr/giant-scala_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.outr/giant-scala_2.12)
 [![Latest version](https://index.scala-lang.org/outr/giant-scala/giant-scala/latest.svg)](https://index.scala-lang.org/outr/giant-scala)
-[![Javadocs](https://javadoc.io/badge/com.outr/giant-scala_2.12.svg)](https://javadoc.io/doc/com.outr/giant-scala_2.12)
+[![Javadocs](https://javadoc.io/badge/com.outr/giant-scala_2.12.svg)](https://javadoc.io/doc/com.outr/giant-scala_2.12) [![Join the chat at https://gitter.im/outr/giantscala](https://badges.gitter.im/outr/giantscala.svg)](https://gitter.im/outr/giantscala?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 GiantScala is wrapper on top of the Scala MongoDB driver to provide higher level functionality and better type-safety.
 
