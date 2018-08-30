@@ -249,7 +249,5 @@ class PersonCollection extends DBCollection[Person]("person", Database) {
 object Database extends MongoDatabase(
     name = "giant-scala-test",
     options = List(ConnectionOption.WaitQueueMultiple(100))) {
-  def theDB: scala.MongoDatabase = db
-
-  val person: PersonCollection = new PersonCollection   // TODO: typed[PersonCollection]
+  val person: PersonCollection = new PersonCollection
 }

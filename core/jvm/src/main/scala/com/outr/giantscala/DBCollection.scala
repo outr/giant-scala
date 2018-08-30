@@ -98,7 +98,8 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
 
   def largeSample(size: Int,
                   groupSize: Int,
-                  retries: Int = 2, samples: Set[T]): Future[Either[DBFailure, Set[T]]] = scribe.async {
+                  retries: Int = 2,
+                  samples: Set[T] = Set.empty): Future[Either[DBFailure, Set[T]]] = scribe.async {
     val querySize = math.min(size - samples.size, groupSize)
     if (querySize > 0) {
       sample(querySize, retries).flatMap {
