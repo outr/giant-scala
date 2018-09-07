@@ -24,8 +24,8 @@ import _root_.scala.concurrent.duration.Duration
 
 class MongoDatabase(val name: String,
                     val urls: List[MongoDBServer] = MongoDatabase.urls,
-                    credentials: Option[Credentials] = MongoDatabase.credentials,
-                    options: List[ConnectionOption] = Nil) {
+                    protected val credentials: Option[Credentials] = MongoDatabase.credentials,
+                    protected val options: List[ConnectionOption] = Nil) {
   assert(urls.nonEmpty, "At least one URL must be included")
 
   val connectionString: String = {
