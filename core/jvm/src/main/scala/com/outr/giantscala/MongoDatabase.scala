@@ -2,7 +2,7 @@ package com.outr.giantscala
 
 import java.util.concurrent.atomic.AtomicBoolean
 
-import com.mongodb.{Block, ConnectionString}
+import com.mongodb.{Block, ConnectionString, MongoCredential}
 
 import scala.language.experimental.macros
 import com.outr.giantscala.oplog.OperationsLog
@@ -29,22 +29,24 @@ class MongoDatabase(val name: String,
   assert(urls.nonEmpty, "At least one URL must be included")
 
   val connectionString: String = {
-    val credentialsString = credentials match {
-      case Some(c) => s"${c.username}:${c.password}@"
-      case None => ""
-    }
     val optionsString = options match {
       case Nil => ""
-      case _ => options.map(_.toString).mkString("/?", "&", "")
+      case _ => options.map(_.toString).mkString("?", "&", "")
     }
-    s"mongodb://$credentialsString${urls.mkString(",")}$optionsString"
+    s"mongodb://${urls.mkString(",")}/$name$optionsString"
   }
-  private val settings = MongoClientSettings.builder().applyToClusterSettings(new Block[ClusterSettings.Builder] {
-    override def apply(b: Builder): Unit = {
-
-      b.applyConnectionString(new ConnectionString(connectionString))
+  private val settings = {
+    val builder = MongoClientSettings.builder()
+    builder.applyToClusterSettings(new Block[ClusterSettings.Builder] {
+      override def apply(b: Builder): Unit = {
+        b.applyConnectionString(new ConnectionString(connectionString))
+      }
+    })
+    credentials.foreach { c =>
+      builder.credential(MongoCredential.createCredential(c.username, c.authenticationDatabase, c.password.toCharArray))
     }
-  }).build()
+    builder.build()
+  }
   private val client = MongoClient(settings)
   protected val db: scala.MongoDatabase = client.getDatabase(name)
 

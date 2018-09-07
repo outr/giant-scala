@@ -26,7 +26,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       Future.successful(succeed)
     }
     "verify the connection string" in {
-      Database.connectionString should be("mongodb://localhost:27017/?waitQueueMultiple=100")
+      Database.connectionString should be("mongodb://localhost:27017/giant-scala-test?waitQueueMultiple=100")
     }
     "drop the database so it's clean and ready" in {
       Database.drop().map(_ => true should be(true))

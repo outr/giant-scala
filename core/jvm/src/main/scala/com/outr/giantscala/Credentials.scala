@@ -1,3 +1,3 @@
 package com.outr.giantscala
 
-case class Credentials(username: String, password: String)
+case class Credentials(username: String, password: String, authenticationDatabase: String = "admin")
