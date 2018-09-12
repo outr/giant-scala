@@ -55,4 +55,12 @@ object Macros {
        ${c.prefix}.as[$t](com.outr.giantscala.Converter.auto[$t])
      """
   }
+
+  def aggregateReplaceroot[T](c: blackbox.Context)(field: c.Tree)(implicit t: c.WeakTypeTag[T]): c.Tree = {
+    import c.universe._
+
+    q"""
+       ${c.prefix}.as[$t](com.outr.giantscala.Converter.auto[$t]).replaceRoot(io.circe.Json.fromString($field.name))
+     """
+  }
 }

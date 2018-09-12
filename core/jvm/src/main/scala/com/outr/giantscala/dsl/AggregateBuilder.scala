@@ -16,9 +16,21 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
   def `match`(conditions: MatchCondition*): AggregateBuilder[Type, Out] = {
     withPipeline(AggregateMatch(conditions.toList))
   }
+  def filter(conditions: MatchCondition*): AggregateBuilder[Type, Out] = {
+    withPipeline(AggregateMatch(conditions.toList))
+  }
   def project(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateProject(fields.toList))
   def group(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateGroup(fields.toList))
   def sample(size: Int): AggregateBuilder[Type, Out] = withPipeline(AggregateSample(size))
+  def lookup[Other <: ModelObject, T](from: DBCollection[Other],
+                                      localField: Field[T],
+                                      foreignField: Field[T],
+                                      as: String): AggregateBuilder[Type, Out] = {
+    withPipeline(AggregateLookup(from, localField, foreignField, as))
+  }
+  def replaceRoot[T](field: Field[T]): AggregateBuilder[Type, T] = macro Macros.aggregateReplaceroot[T]
+  def replaceRoot(json: Json): AggregateBuilder[Type, Out] = withPipeline(AggregateReplaceRoot(json))
+  def replaceRoot(field: ProjectField): AggregateBuilder[Type, Out] = replaceRoot(field.json)
 
   def opt[T](option: Option[T])
             (f: (AggregateBuilder[Type, Out], T) => AggregateBuilder[Type, Out]): AggregateBuilder[Type, Out] = {
