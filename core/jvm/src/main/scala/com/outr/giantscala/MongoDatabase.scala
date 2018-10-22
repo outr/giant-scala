@@ -3,12 +3,14 @@ package com.outr.giantscala
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-import com.mongodb.{MongoCredential, ServerAddress}
+import com.mongodb.{Block, ConnectionString, MongoCredential, ServerAddress}
 
 import scala.language.experimental.macros
 import com.outr.giantscala.oplog.OperationsLog
 import com.outr.giantscala.upgrade.{CreateDatabase, DatabaseUpgrade}
 import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.connection.{ClusterSettings, ConnectionPoolSettings, ServerSettings, SocketSettings}
+import org.mongodb.scala.connection.ClusterSettings.Builder
 import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoCollection}
 import profig.{JsonUtil, Profig}
 
@@ -36,24 +38,32 @@ class MongoDatabase(val name: String,
 
   private val settings = {
     val builder = MongoClientSettings.builder()
-    builder.applyToClusterSettings { b =>
-      b.hosts(urls.map { url =>
-        new ServerAddress(url.host, url.port)
-      }.asJava)
-      b.maxWaitQueueSize(maxWaitQueueSize)
-    }
-    builder.applyToConnectionPoolSettings { b =>
-      b.minSize(connectionPoolMinSize)
-      b.maxSize(connectionPoolMaxSize)
-      b.maxWaitQueueSize(connectionPoolMaxWaitQueue)
-      b.maxWaitTime(connectionPoolMaxWaitTime.toMillis, TimeUnit.MILLISECONDS)
-    }
-    builder.applyToServerSettings { b =>
-      b.heartbeatFrequency(heartbeatFrequency.toMillis, TimeUnit.MILLISECONDS)
-    }
-    builder.applyToSocketSettings { b =>
-      b.connectTimeout(connectionTimeout.toSeconds.toInt, TimeUnit.SECONDS)
-    }
+    builder.applyToClusterSettings(new Block[ClusterSettings.Builder] {
+      override def apply(b: Builder): Unit = {
+        b.hosts(urls.map { url =>
+          new ServerAddress(url.host, url.port)
+        }.asJava)
+        b.maxWaitQueueSize(maxWaitQueueSize)
+      }
+    })
+    builder.applyToConnectionPoolSettings(new Block[ConnectionPoolSettings.Builder] {
+      override def apply(b: ConnectionPoolSettings.Builder): Unit = {
+        b.minSize(connectionPoolMinSize)
+        b.maxSize(connectionPoolMaxSize)
+        b.maxWaitQueueSize(connectionPoolMaxWaitQueue)
+        b.maxWaitTime(connectionPoolMaxWaitTime.toMillis, TimeUnit.MILLISECONDS)
+      }
+    })
+    builder.applyToServerSettings(new Block[ServerSettings.Builder] {
+      override def apply(b: ServerSettings.Builder): Unit = {
+        b.heartbeatFrequency(heartbeatFrequency.toMillis, TimeUnit.MILLISECONDS)
+      }
+    })
+    builder.applyToSocketSettings(new Block[SocketSettings.Builder] {
+      override def apply(b: SocketSettings.Builder): Unit = {
+        b.connectTimeout(connectionTimeout.toSeconds.toInt, TimeUnit.SECONDS)
+      }
+    })
     credentials.foreach { c =>
       builder.credential(MongoCredential.createCredential(c.username, c.authenticationDatabase, c.password.toCharArray))
     }
