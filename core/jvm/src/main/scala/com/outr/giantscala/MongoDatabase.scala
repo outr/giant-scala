@@ -1,8 +1,9 @@
 package com.outr.giantscala
 
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-import com.mongodb.{Block, ConnectionString, MongoCredential}
+import com.mongodb.{MongoCredential, ServerAddress}
 
 import scala.language.experimental.macros
 import com.outr.giantscala.oplog.OperationsLog
@@ -14,41 +15,52 @@ import profig.{JsonUtil, Profig}
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scribe.Execution.global
-import org.mongodb.scala
-import org.mongodb.scala.connection.ClusterSettings
-import org.mongodb.scala.connection.ClusterSettings.Builder
+import org.mongodb.scala.{MongoDatabase => ScalaMongoDatabase}
 import org.mongodb.scala.model.ReplaceOptions
 
-import _root_.scala.concurrent._
-import _root_.scala.concurrent.duration.Duration
+import scala.concurrent._
+import scala.concurrent.duration._
+import scala.collection.JavaConverters._
 
 class MongoDatabase(val name: String,
                     val urls: List[MongoDBServer] = MongoDatabase.urls,
-                    protected val credentials: Option[Credentials] = MongoDatabase.credentials,
-                    protected val options: List[ConnectionOption] = Nil) {
+                    val maxWaitQueueSize: Int = 500,
+                    val connectionPoolMinSize: Int = 0,
+                    val connectionPoolMaxSize: Int = 100,
+                    val connectionPoolMaxWaitQueue: Int = 500,
+                    val connectionPoolMaxWaitTime: FiniteDuration = 2.minutes,
+                    val heartbeatFrequency: FiniteDuration = 10.seconds,
+                    val connectionTimeout: FiniteDuration = 10.seconds,
+                    protected val credentials: Option[Credentials] = MongoDatabase.credentials) {
   assert(urls.nonEmpty, "At least one URL must be included")
 
-  val connectionString: String = {
-    val optionsString = options match {
-      case Nil => ""
-      case _ => options.map(_.toString).mkString("?", "&", "")
-    }
-    s"mongodb://${urls.mkString(",")}/$name$optionsString"
-  }
   private val settings = {
     val builder = MongoClientSettings.builder()
-    builder.applyToClusterSettings(new Block[ClusterSettings.Builder] {
-      override def apply(b: Builder): Unit = {
-        b.applyConnectionString(new ConnectionString(connectionString))
-      }
-    })
+    builder.applyToClusterSettings { b =>
+      b.hosts(urls.map { url =>
+        new ServerAddress(url.host, url.port)
+      }.asJava)
+      b.maxWaitQueueSize(maxWaitQueueSize)
+    }
+    builder.applyToConnectionPoolSettings { b =>
+      b.minSize(connectionPoolMinSize)
+      b.maxSize(connectionPoolMaxSize)
+      b.maxWaitQueueSize(connectionPoolMaxWaitQueue)
+      b.maxWaitTime(connectionPoolMaxWaitTime.toMillis, TimeUnit.MILLISECONDS)
+    }
+    builder.applyToServerSettings { b =>
+      b.heartbeatFrequency(heartbeatFrequency.toMillis, TimeUnit.MILLISECONDS)
+    }
+    builder.applyToSocketSettings { b =>
+      b.connectTimeout(connectionTimeout.toSeconds.toInt, TimeUnit.SECONDS)
+    }
     credentials.foreach { c =>
       builder.credential(MongoCredential.createCredential(c.username, c.authenticationDatabase, c.password.toCharArray))
     }
     builder.build()
   }
   private val client = MongoClient(settings)
-  protected val db: scala.MongoDatabase = client.getDatabase(name)
+  protected val db: ScalaMongoDatabase = client.getDatabase(name)
 
   val buildInfo: MongoBuildInfo = Await.result(db.runCommand(Document("buildinfo" -> "")).toFuture().map { j =>
     JsonUtil.fromJsonString[MongoBuildInfo](j.toJson())
