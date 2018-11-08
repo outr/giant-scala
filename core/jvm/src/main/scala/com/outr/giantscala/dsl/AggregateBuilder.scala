@@ -31,6 +31,9 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
   def replaceRoot[T](field: Field[T]): AggregateBuilder[Type, T] = macro Macros.aggregateReplaceroot[T]
   def replaceRoot(json: Json): AggregateBuilder[Type, Out] = withPipeline(AggregateReplaceRoot(json))
   def replaceRoot(field: ProjectField): AggregateBuilder[Type, Out] = replaceRoot(field.json)
+  def addFields(fields: ProjectField*): AggregateBuilder[Type, Out] = {
+    withPipeline(AggregateAddFields(fields.toList))
+  }
 
   def opt[T](option: Option[T])
             (f: (AggregateBuilder[Type, Out], T) => AggregateBuilder[Type, Out]): AggregateBuilder[Type, Out] = {
