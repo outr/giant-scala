@@ -3,6 +3,7 @@ package com.outr.giantscala.dsl
 import com.outr.giantscala._
 import io.circe.{Json, Printer}
 import org.mongodb.scala.bson.collection.immutable.Document
+import profig.JsonUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.experimental.macros
@@ -31,9 +32,13 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
   def replaceRoot[T](field: Field[T]): AggregateBuilder[Type, T] = macro Macros.aggregateReplaceroot[T]
   def replaceRoot(json: Json): AggregateBuilder[Type, Out] = withPipeline(AggregateReplaceRoot(json))
   def replaceRoot(field: ProjectField): AggregateBuilder[Type, Out] = replaceRoot(field.json)
-  def addFields(fields: ProjectField*): AggregateBuilder[Type, Out] = {
-    withPipeline(AggregateAddFields(fields.toList))
-  }
+  def addFields(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateAddFields(fields.toList))
+  def unwind(path: String): AggregateBuilder[Type, Out] = withPipeline(AggregateUnwind(path))
+  def skip(skip: Int): AggregateBuilder[Type, Out] = withPipeline(AggregateSkip(skip))
+  def limit(limit: Int): AggregateBuilder[Type, Out] = withPipeline(AggregateLimit(limit))
+  def sort(sortFields: SortField*): AggregateBuilder[Type, Out] = withPipeline(AggregateSort(sortFields.toList))
+  def count(): AggregateBuilder[Type, Int] = withPipeline(AggregateCount("countResult")).as[Int](Count)
+  def out(collectionName: String): AggregateBuilder[Type, Out] = withPipeline(AggregateOut(collectionName))
 
   def opt[T](option: Option[T])
             (f: (AggregateBuilder[Type, Out], T) => AggregateBuilder[Type, Out]): AggregateBuilder[Type, Out] = {

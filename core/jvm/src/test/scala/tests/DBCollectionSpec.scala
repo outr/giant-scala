@@ -1,6 +1,7 @@
 package tests
 
 import com.outr.giantscala._
+import com.outr.giantscala.dsl.SortField
 import com.outr.giantscala.failure.FailureType
 import com.outr.giantscala.oplog.Delete
 import org.mongodb.scala.bson.collection.immutable.Document
@@ -153,6 +154,54 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         .toFuture
         .map { people =>
           people.map(_.name) should be(List("Person A"))
+        }
+    }
+    "aggregate count" in {
+      import Database.person._
+      aggregate.count().toFuture.map { results =>
+        results should be(List(2))
+      }
+    }
+    "aggregate sort by name ascending" in {
+      import Database.person._
+      aggregate
+        .sort(SortField.Ascending(name))
+        .toFuture
+        .map { people =>
+          val names = people.map(_.name)
+          names should be(List("Person A", "Person B"))
+        }
+    }
+    "aggregate sort by name descending" in {
+      import Database.person._
+      aggregate
+        .sort(SortField.Descending(name))
+        .toFuture
+        .map { people =>
+          val names = people.map(_.name)
+          names should be(List("Person B", "Person A"))
+        }
+    }
+    "aggregate skip" in {
+      import Database.person._
+      aggregate
+        .sort(SortField.Ascending(name))
+        .skip(1)
+        .toFuture
+        .map { people =>
+          val names = people.map(_.name)
+          names should be(List("Person B"))
+        }
+    }
+    "aggregate limit" in {
+      import Database.person._
+      aggregate
+        .sort(SortField.Ascending(name))
+        .limit(1)
+        .toFuture
+        .map { people =>
+          val names = people.map(_.name)
+          names should be(List("Person A"))
         }
     }
     "query Person A back in a aggregate DSL query with conversion" in {
