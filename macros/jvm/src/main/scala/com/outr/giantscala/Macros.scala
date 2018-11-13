@@ -10,8 +10,8 @@ object Macros {
     import c.universe._
 
     q"""
-       import org.mongodb.scala.bson.collection.immutable.Document
-       import profig.JsonUtil
+       import _root_.org.mongodb.scala.bson.collection.immutable.Document
+       import _root_.profig.JsonUtil
 
        new Converter[$t] {
          override def toDocument(t: $t): Document = {
@@ -31,9 +31,9 @@ object Macros {
     val store = c.prefix
 
     q"""
-       import profig.JsonUtil
+       import _root_.profig.JsonUtil
 
-       new com.outr.giantscala.TypedStore[$t] {
+       new _root_.com.outr.giantscala.TypedStore[$t] {
          override def get: Future[Option[$t]] = scribe.async {
            $store.string.get($key).map(_.map(json => JsonUtil.fromJsonString[$t](json)))
          }
@@ -52,15 +52,15 @@ object Macros {
     import c.universe._
 
     q"""
-       ${c.prefix}.as[$t](com.outr.giantscala.Converter.auto[$t])
+       ${c.prefix}.as[$t](_root_.com.outr.giantscala.Converter.auto[$t])
      """
   }
 
-  def aggregateReplaceroot[T](c: blackbox.Context)(field: c.Tree)(implicit t: c.WeakTypeTag[T]): c.Tree = {
+  def aggregateReplaceRoot[T](c: blackbox.Context)(field: c.Tree)(implicit t: c.WeakTypeTag[T]): c.Tree = {
     import c.universe._
 
     q"""
-       ${c.prefix}.as[$t](com.outr.giantscala.Converter.auto[$t]).replaceRoot(io.circe.Json.fromString($field.name))
+       ${c.prefix}.as[$t](_root_.com.outr.giantscala.Converter.auto[$t]).replaceRoot(_root_.io.circe.Json.fromString($field.name))
      """
   }
 }
