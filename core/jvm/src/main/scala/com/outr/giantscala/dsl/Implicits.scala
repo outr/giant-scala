@@ -11,6 +11,19 @@ trait Implicits {
   implicit class FieldExtras[T](f: Field[T]) {
     def ===(value: T)
            (implicit encoder: Encoder[T]): MatchCondition = MatchCondition(Json.obj(f.name -> encoder(value)))
+    def >(value: T)(implicit encoder: Encoder[T]): MatchCondition = {
+      MatchCondition(Json.obj(f.name -> Json.obj("$gt" -> encoder(value))))
+    }
+    def >=(value: T)(implicit encoder: Encoder[T]): MatchCondition = {
+      MatchCondition(Json.obj(f.name -> Json.obj("$gte" -> encoder(value))))
+    }
+    def <(value: T)(implicit encoder: Encoder[T]): MatchCondition = {
+      MatchCondition(Json.obj(f.name -> Json.obj("$lt" -> encoder(value))))
+    }
+    def <=(value: T)(implicit encoder: Encoder[T]): MatchCondition = {
+      MatchCondition(Json.obj(f.name -> Json.obj("$lte" -> encoder(value))))
+    }
+
     def in(values: T*)
           (implicit encoder: Encoder[T]): MatchCondition = {
       MatchCondition(Json.obj("$in" -> Json.arr(values.map(encoder.apply): _*)))
