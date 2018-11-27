@@ -34,7 +34,7 @@ trait Implicits {
 
     def in(values: T*)
           (implicit encoder: Encoder[T]): MatchCondition = {
-      MatchCondition(Json.obj("$in" -> Json.arr(values.map(encoder.apply): _*)))
+      MatchCondition(Json.obj(f.name -> Json.obj("$in" -> Json.arr(values.map(encoder.apply): _*))))
     }
     def include: ProjectField = ProjectField.Include(f)
     def exclude: ProjectField = ProjectField.Exclude(f)

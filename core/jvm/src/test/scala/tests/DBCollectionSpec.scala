@@ -222,7 +222,17 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
     "verify $or" in {
       import Database.person._
       val query = aggregate.`match`(name === "Person A" || name === "Person B").toQuery(includeSpaces = false)
-      query should be("""db.person.aggregate([{"$match":{"$and":[{"$or":[{"name":"Person A"},{"name":"Person B"}]}]}}])""")
+      query should be("""db.person.aggregate([{"$match":{"$or":[{"name":"Person A"},{"name":"Person B"}]}}])""")
+    }
+    "verify $and" in {
+      import Database.person._
+      val query = aggregate.`match`(name === "Person A" && name === "Person B").toQuery(includeSpaces = false)
+      query should be("""db.person.aggregate([{"$match":{"$and":[{"name":"Person A"},{"name":"Person B"}]}}])""")
+    }
+    "verify $in" in {
+      import Database.person._
+      val query = aggregate.`match`(name.in("Person A", "Person B")).toQuery(includeSpaces = false)
+      query should be("""db.person.aggregate([{"$match":{"name":{"$in":["Person A","Person B"]}}}])""")
     }
     "verify aggregate $addFields" in {
       import Database.person._

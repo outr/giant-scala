@@ -30,9 +30,9 @@ developers in ThisBuild := List(
 testOptions in ThisBuild += Tests.Argument("-oD")
 
 val scribeVersion = "2.6.0"
-val profigVersion = "2.3.2"
+val profigVersion = "2.3.3"
 val reactifyVersion = "3.0.3"
-val mongoScalaDriverVersion = "2.4.2"
+val mongoScalaDriverVersion = "2.5.0"
 val macroParadiseVersion = "2.1.1"
 val scalatestVersion: String = "3.0.5"
 
