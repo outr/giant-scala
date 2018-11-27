@@ -63,6 +63,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends R
         case OperationType.UPDATE | OperationType.REPLACE => 'u'
         case OperationType.DELETE => 'd'
         case OperationType.INVALIDATE => 'v'
+        case OperationType.DROP => 'x'
         case opType => throw new RuntimeException(s"Unsupported OperationType: $opType / ${result.getFullDocument}")
       }
       val documentKey = Option(result.getDocumentKey).map(_.getFirstKey).getOrElse("")
