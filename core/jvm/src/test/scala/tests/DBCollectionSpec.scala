@@ -219,6 +219,11 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       val query = aggregate.group(_id.set("names"), name.addToSet("names")).toQuery(includeSpaces = false)
       query should be("""db.person.aggregate([{"$group":{"_id":"names","names":{"$addToSet":"$name"}}}])""")
     }
+    "verify $or" in {
+      import Database.person._
+      val query = aggregate.`match`(name === "Person A" || name === "Person B").toQuery(includeSpaces = false)
+      query should be("""db.person.aggregate([{"$match":{"$and":[{"$or":[{"name":"Person A"},{"name":"Person B"}]}]}}])""")
+    }
     "verify aggregate $addFields" in {
       import Database.person._
       val query = aggregate.addFields(Field("person").arrayElemAt("$people", 0)).toQuery(includeSpaces = false)

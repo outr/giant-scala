@@ -8,6 +8,14 @@ import scala.language.implicitConversions
 trait Implicits {
   def field[T](name: String): Field[T] = Field[T](name)
 
+  def or(conditions: MatchCondition*): MatchCondition = {
+    MatchCondition(Json.obj("$or" -> Json.fromValues(conditions.map(_.json))))
+  }
+
+  def and(conditions: MatchCondition*): MatchCondition = {
+    MatchCondition(Json.obj("$or" -> Json.fromValues(conditions.map(_.json))))
+  }
+
   implicit class FieldExtras[T](f: Field[T]) {
     def ===(value: T)
            (implicit encoder: Encoder[T]): MatchCondition = MatchCondition(Json.obj(f.name -> encoder(value)))
