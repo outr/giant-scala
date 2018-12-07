@@ -2,7 +2,7 @@ import sbtcrossproject.crossProject
 
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.2.10"
+version in ThisBuild := "1.2.11-SNAPSHOT"
 scalaVersion in ThisBuild := "2.12.6"
 crossScalaVersions in ThisBuild := List("2.12.6", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
@@ -37,7 +37,7 @@ val macroParadiseVersion = "2.1.1"
 val scalatestVersion: String = "3.0.5"
 
 lazy val root = project.in(file("."))
-  .aggregate(macrosJS, macrosJVM, coreJS, coreJVM)
+  .aggregate(macrosJS, macrosJVM, coreJS, coreJVM, plugin)
   .settings(
     name := "giant-scala",
     publish := {},

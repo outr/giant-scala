@@ -1,3 +1,7 @@
 package com.outr.giantscala
 
-case class Field[T](name: String)
+class Field[T](val name: String)
+
+object Field {
+  def apply[T](name: String): Field[T] = new Field[T](name)
+}

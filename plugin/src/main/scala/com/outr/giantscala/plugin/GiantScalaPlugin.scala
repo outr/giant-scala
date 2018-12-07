@@ -52,6 +52,7 @@ object GiantScalaPlugin extends sbt.AutoPlugin {
 
           val m = runtimeMirror(classLoader)
 
+          // TODO: support recursively built fields list, breaking into sub-objects supporting Option[case class] and Seq[case class]
           val classSymbol = m.classSymbol(clazz)
           val classMirror = m.reflectClass(classSymbol)
           val moduleSymbol = classMirror.symbol.companion
@@ -65,12 +66,32 @@ object GiantScalaPlugin extends sbt.AutoPlugin {
           val params = apply.paramLists.head.map(_.asTerm)
           val fields = params.map { p =>
             val `type` = p.typeSignature.resultType.toString.replaceAllLiterally("Predef.", "")
-            val name = p.name.decodedName.toString
-            val encodedName = name match {
-              case "type" => "`type`"
-              case _ => name
+            object CaseField {
+              def unapply(trmSym: TermSymbol): Option[(Name, Type)] = {
+                if (trmSym.isVal && trmSym.isCaseAccessor)
+                  Some((TermName(trmSym.name.toString.trim), trmSym.typeSignature))
+                else
+                  None
+              }
             }
-            s"""val $encodedName: Field[${`type`}] = Field[${`type`}]("$name")"""
+            val caseEntries = p.typeSignature.resultType.decls.collect {
+              case CaseField(nme, tpe) => (nme, tpe)
+            }.toList
+            val name = p.name.decodedName.toString
+            val encName = encodedName(name)
+            if (caseEntries.isEmpty) {
+              s"""val $encName: Field[${`type`}] = Field[${`type`}]("$name")"""
+            } else {
+              val subFields = caseEntries.map {
+                case (nme, tpe) => {
+                  val subType = tpe.toString.replaceAllLiterally("Predef.", "")
+                  s"""val ${encodedName(nme.decodedName.toString)}: Field[$subType] = Field[$subType]("$nme")"""
+                }
+              }
+              s"""object $encName extends Field[${`type`}]("$name") {
+                 |    ${subFields.mkString("\n    ")}
+                 |  }""".stripMargin
+            }
           }
           val source =
             s"""
@@ -98,6 +119,11 @@ object GiantScalaPlugin extends sbt.AutoPlugin {
       }
     }
   )
+
+  private def encodedName(name: String): String = name match {
+    case "type" => "`type`"
+    case _ => name
+  }
 }
 
 case class ModelDetails(className: String, args: List[ModelArg], path: Path, packageName: String) {
