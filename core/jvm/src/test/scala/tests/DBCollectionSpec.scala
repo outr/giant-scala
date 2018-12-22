@@ -4,6 +4,7 @@ import com.outr.giantscala._
 import com.outr.giantscala.dsl.SortField
 import com.outr.giantscala.failure.FailureType
 import com.outr.giantscala.oplog.Delete
+import io.circe.Printer
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
 import scribe.Logger
@@ -49,6 +50,11 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         deletes += delete
       }
       noException should be thrownBy Database.person.monitor.start()
+    }
+    "validate a field value" in {
+      val f = Field[String]("MyField")
+      val value = f("test").pretty(Printer.noSpaces)
+      value should be("""{"MyField":"test"}""")
     }
     "insert a person" in {
       Database.person.insert(Person(name = "John Doe", age = 30, _id = "john.doe")).map { result =>

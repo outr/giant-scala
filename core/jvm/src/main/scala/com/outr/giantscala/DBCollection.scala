@@ -1,12 +1,14 @@
 package com.outr.giantscala
 
-import com.outr.giantscala.dsl.{AggregateBuilder, Implicits}
+import com.outr.giantscala.dsl.{AggregateBuilder, Implicits, MatchCondition, UpdateBuilder}
 import com.outr.giantscala.failure.{DBFailure, FailureType}
 import com.outr.giantscala.oplog.CollectionMonitor
+import io.circe.{Json, Printer}
 import org.mongodb.scala.{BulkWriteResult, MongoCollection, MongoException}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters.{equal, in}
-import org.mongodb.scala.model.{Aggregates, ReplaceOptions}
+import org.mongodb.scala.model.ReplaceOptions
+import org.mongodb.scala.result.DeleteResult
 
 import scala.language.experimental.macros
 import scala.concurrent.Future
@@ -36,6 +38,18 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
   lazy val batch: Batch[T] = Batch[T](this)
 
   lazy val aggregate: AggregateBuilder[T, T] = AggregateBuilder(this, converter)
+  lazy val updateOne: UpdateBuilder[T] = UpdateBuilder[T](this, many = false)
+  lazy val updateMany: UpdateBuilder[T] = UpdateBuilder[T](this, many = true)
+
+  def deleteOne(conditions: MatchCondition*): Future[Either[DBFailure, DeleteResult]] = {
+    val json = conditions.foldLeft(Json.obj())((json, condition) => json.deepMerge(condition.json))
+    collection.deleteOne(Document(json.pretty(Printer.spaces2))).toFuture().either
+  }
+
+  def deleteMany(conditions: MatchCondition*): Future[Either[DBFailure, DeleteResult]] = {
+    val json = conditions.foldLeft(Json.obj())((json, condition) => json.deepMerge(condition.json))
+    collection.deleteMany(Document(json.pretty(Printer.spaces2))).toFuture().either
+  }
 
   def insert(values: Seq[T]): Future[Either[DBFailure, Seq[T]]] = scribe.async {
     if (values.nonEmpty) {
