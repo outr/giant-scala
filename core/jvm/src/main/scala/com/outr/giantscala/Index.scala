@@ -2,13 +2,14 @@ package com.outr.giantscala
 
 import com.mongodb.client.model.{CollationStrength, IndexOptions}
 import com.outr.giantscala.Index._
-import org.mongodb.scala.MongoCollection
+import org.mongodb.scala.{MongoCollection, MongoCommandException}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions
 import org.mongodb.scala.model.Collation
 
 import scala.concurrent.Future
 import scribe.Execution.global
+
 import scala.concurrent.duration.TimeUnit
 
 case class Index private(`type`: IndexType, fields: List[String], properties: IndexProperties = IndexProperties()) {
@@ -23,7 +24,18 @@ case class Index private(`type`: IndexType, fields: List[String], properties: In
     properties.collation.foreach(options.collation)
     properties.sparse.foreach(options.sparse)
 
-    collection.createIndex(ndx, options).toFuture().map(_ => ())
+    collection.createIndex(ndx, options).toFuture().map(_ => ()).recoverWith {
+      case exc: MongoCommandException if exc.getErrorCode == 85 => {      // Index Options Conflict, delete and re-create
+        val msg = exc.getErrorMessage
+        val indexName = msg match {
+          case NameRegex(n) => n
+        }
+        scribe.warn(s"Index options conflict for ${collection.namespace.getFullName}.$indexName. Deleting and re-creating index...")
+        collection.dropIndex(indexName).toFuture().flatMap { _ =>
+          create(collection)
+        }
+      }
+    }
   }
 
   def property(name: Option[String] = properties.name,
@@ -52,6 +64,8 @@ case class IndexProperties(name: Option[String] = None,
 case class ExpireAfter(value: Long, unit: TimeUnit)
 
 object Index {
+  private val NameRegex = """Index with name: (.+) already exists with different options""".r
+
   sealed trait IndexType {
     def apply(fields: String*): Index = Index(this, fields.toList)
     def multiple(fields: String*): List[Index] = fields.toList.map(apply(_))

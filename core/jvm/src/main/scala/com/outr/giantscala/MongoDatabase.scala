@@ -174,6 +174,9 @@ class MongoDatabase(val name: String,
 
     if (currentlyBlocking && !blocking && upgrades.nonEmpty) {
       scribe.info("Additional upgrades do not require blocking. Allowing application to start...")
+      future.failed.map { throwable =>
+        scribe.error("Database upgrade failure", throwable)
+      }
       Future.successful(())
     } else {
       future

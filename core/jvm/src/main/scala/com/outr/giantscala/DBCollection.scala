@@ -33,7 +33,9 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
 
   def indexes: List[Index]
 
-  def create(): Future[Unit] = Future.sequence(indexes.map(_.create(collection))).map(_ => ())    // Create indexes
+  def create(): Future[Unit] = Future.sequence(indexes.map(_.create(collection))).map(_ => ()).recover {
+    case t: Throwable => throw new RuntimeException(s"Failure during creation of indexes for $collectionName", t)
+  }
 
   lazy val batch: Batch[T] = Batch[T](this)
 
