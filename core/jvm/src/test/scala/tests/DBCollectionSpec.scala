@@ -7,6 +7,7 @@ import com.outr.giantscala.oplog.Delete
 import io.circe.Printer
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
+import reactify.Channel
 import scribe.Logger
 import scribe.format._
 import scribe.modify.ClassNameFilter
@@ -160,6 +161,21 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         .toFuture
         .map { people =>
           people.map(_.name) should be(List("Person A"))
+        }
+    }
+    "query Person A back in an aggregate DSL query using toStream" in {
+      import Database.person._
+      var people = List.empty[Person]
+      val channel = Channel[Person]
+      channel.attach { person =>
+        people = person :: people
+      }
+      aggregate
+        .sort(SortField.Descending(name))
+        .toStream(channel)
+        .map { received =>
+          received should be(2)
+          people.map(_.name) should be(List("Person A", "Person B"))
         }
     }
     "aggregate count" in {

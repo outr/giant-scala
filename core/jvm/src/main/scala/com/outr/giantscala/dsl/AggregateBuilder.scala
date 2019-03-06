@@ -1,10 +1,14 @@
 package com.outr.giantscala.dsl
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import com.outr.giantscala._
 import io.circe.{Json, Printer}
+import org.mongodb.scala.Observer
 import org.mongodb.scala.bson.collection.immutable.Document
+import reactify.Channel
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
 
 case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[Type],
@@ -61,5 +65,20 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
   }
   def toFuture(implicit executionContext: ExecutionContext): Future[List[Out]] = {
     collection.collection.aggregate(documents).toFuture().map(_.map(converter.fromDocument).toList)
+  }
+  def toStream(channel: Channel[Out]): Future[Int] = {
+    val promise = Promise[Int]
+    val counter = new AtomicInteger(0)
+    collection.collection.aggregate(documents).subscribe(new Observer[Document] {
+      override def onNext(result: Document): Unit = {
+        channel := converter.fromDocument(result)
+        counter.incrementAndGet()
+      }
+
+      override def onError(t: Throwable): Unit = promise.failure(t)
+
+      override def onComplete(): Unit = promise.success(counter.get())
+    })
+    promise.future
   }
 }
