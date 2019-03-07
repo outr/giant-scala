@@ -4,16 +4,26 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.outr.giantscala._
 import io.circe.{Json, Printer}
-import org.mongodb.scala.Observer
+import org.mongodb.scala.{AggregateObservable, Observer}
 import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.model.Collation
 import reactify.Channel
 
+import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
 
 case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[Type],
                                                       converter: Converter[Out],
-                                                      pipeline: List[AggregateInstruction] = Nil) {
+                                                      pipeline: List[AggregateInstruction] = Nil,
+                                                      _allowDiskUse: Boolean = false,
+                                                      _maxTime: Option[Duration] = None,
+                                                      _maxAwaitTime: Option[Duration] = None,
+                                                      _bypassDocumentValidation: Boolean = false,
+                                                      _collation: Option[Collation] = None,
+                                                      _comment: Option[String] = None,
+                                                      _hint: Option[Bson] = None) {
   def withPipeline(instructions: AggregateInstruction*): AggregateBuilder[Type, Out] = {
     copy(pipeline = pipeline ::: instructions.toList)
   }
@@ -55,6 +65,14 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
   def jsonStrings: List[String] = json.map(_.pretty(Printer.spaces2))
   def documents: List[Document] = jsonStrings.map(Document.apply)
 
+  def allowDiskUse: AggregateBuilder[Type, Out] = copy(_allowDiskUse = true)
+  def maxTime(duration: Duration): AggregateBuilder[Type, Out] = copy(_maxTime = Some(duration))
+  def maxAwaitTime(duration: Duration): AggregateBuilder[Type, Out] = copy(_maxAwaitTime = Some(duration))
+  def bypassDocumentValidation: AggregateBuilder[Type, Out] = copy(_bypassDocumentValidation = true)
+  def collation(collation: Collation): AggregateBuilder[Type, Out] = copy(_collation = Some(collation))
+  def comment(comment: String): AggregateBuilder[Type, Out] = copy(_comment = Some(comment))
+  def hint(hint: Bson): AggregateBuilder[Type, Out] = copy(_hint = Some(hint))
+
   def toQuery(includeSpaces: Boolean = true): String = {
     val printer = if (includeSpaces) {
       Printer.spaces2
@@ -64,12 +82,12 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
     s"db.${collection.collectionName}.aggregate(${Json.arr(json: _*).pretty(printer)})"
   }
   def toFuture(implicit executionContext: ExecutionContext): Future[List[Out]] = {
-    collection.collection.aggregate(documents).toFuture().map(_.map(converter.fromDocument).toList)
+    createAggregate().toFuture().map(_.map(converter.fromDocument).toList)
   }
   def toStream(channel: Channel[Out]): Future[Int] = {
     val promise = Promise[Int]
     val counter = new AtomicInteger(0)
-    collection.collection.aggregate(documents).subscribe(new Observer[Document] {
+    createAggregate().subscribe(new Observer[Document] {
       override def onNext(result: Document): Unit = {
         channel := converter.fromDocument(result)
         counter.incrementAndGet()
@@ -80,5 +98,17 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
       override def onComplete(): Unit = promise.success(counter.get())
     })
     promise.future
+  }
+
+  private def createAggregate(): AggregateObservable[Document] = {
+    val a = collection.collection.aggregate(documents)
+    if (_allowDiskUse) a.allowDiskUse(_allowDiskUse)
+    _maxTime.foreach(a.maxTime)
+    _maxAwaitTime.foreach(a.maxAwaitTime)
+    if (_bypassDocumentValidation) a.bypassDocumentValidation(_bypassDocumentValidation)
+    _collation.foreach(a.collation)
+    _comment.foreach(a.comment)
+    _hint.foreach(a.hint)
+    a
   }
 }
