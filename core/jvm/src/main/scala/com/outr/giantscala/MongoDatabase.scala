@@ -72,6 +72,8 @@ class MongoDatabase(val name: String,
   private val client = MongoClient(settings)
   protected val db: ScalaMongoDatabase = client.getDatabase(name)
 
+  // TODO: support client.startSession().toFuture().map(_.startTransaction()) for sessions and transactions on modifications (update, insert, and delete)
+
   val buildInfo: MongoBuildInfo = Await.result(db.runCommand(Document("buildinfo" -> "")).toFuture().map { j =>
     JsonUtil.fromJsonString[MongoBuildInfo](j.toJson())
   }, Duration.Inf)

@@ -81,9 +81,11 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
     }
     s"db.${collection.collectionName}.aggregate(${Json.arr(json: _*).pretty(printer)})"
   }
+
   def toFuture(implicit executionContext: ExecutionContext): Future[List[Out]] = {
     createAggregate().toFuture().map(_.map(converter.fromDocument).toList)
   }
+
   def toStream(channel: Channel[Out]): Future[Int] = {
     val promise = Promise[Int]
     val counter = new AtomicInteger(0)

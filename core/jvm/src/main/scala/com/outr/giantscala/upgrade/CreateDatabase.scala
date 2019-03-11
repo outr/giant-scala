@@ -10,5 +10,8 @@ object CreateDatabase extends DatabaseUpgrade {
   override def alwaysRun: Boolean = true
   override def applyToNew: Boolean = true
 
-  override def upgrade(db: MongoDatabase): Future[Unit] = Future.sequence(db.collections.map(_.create())).map(_ => ())
+  override def upgrade(db: MongoDatabase): Future[Unit] = {
+    val createIndexes = db.collections.map(_.create())
+    Future.sequence(createIndexes).map(_ => ())
+  }
 }

@@ -33,8 +33,22 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
 
   def indexes: List[Index]
 
-  def create(): Future[Unit] = Future.sequence(indexes.map(_.create(collection))).map(_ => ()).recover {
-    case t: Throwable => throw new RuntimeException(s"Failure during creation of indexes for $collectionName", t)
+  def storedIndexes: Future[List[StoredIndex]] = collection.listIndexes().toFuture().map { documents =>
+    documents.toList.map(StoredIndex.converter.fromDocument)
+  }
+
+  def create(): Future[Unit] = for {
+    _ <- Future.sequence(indexes.map(_.create(collection)))
+    stored <- storedIndexes
+    delete = stored.collect {
+      case storedIndex if !indexes.exists(_.fields.toSet == storedIndex.fields) && storedIndex.name != "_id_" => {
+        scribe.warn(s"Deleting existing index: ${storedIndex.ns}.${storedIndex.name}")
+        storedIndex
+      }
+    }
+    _ <- Future.sequence(delete.map(i => collection.dropIndex(i.name).toFuture()))
+  } yield {
+    ()
   }
 
   lazy val batch: Batch[T] = Batch[T](this)
