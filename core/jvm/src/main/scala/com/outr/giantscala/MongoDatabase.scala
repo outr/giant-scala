@@ -3,7 +3,7 @@ package com.outr.giantscala
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
-import com.mongodb.{Block, ConnectionString, MongoCredential, ServerAddress}
+import com.mongodb.{Block, MongoCredential, ServerAddress}
 
 import scala.language.experimental.macros
 import com.outr.giantscala.oplog.OperationsLog
