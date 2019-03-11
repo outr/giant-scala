@@ -4,6 +4,7 @@ import com.mongodb.client.model.changestream.OperationType
 import com.outr.giantscala.{DBCollection, ModelObject}
 import io.circe.Json
 import org.mongodb.scala
+import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.BsonTimestamp
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.changestream.{ChangeStreamDocument, FullDocument}
@@ -13,7 +14,7 @@ import reactify._
 
 import _root_.scala.concurrent.duration._
 
-class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends Reaction[Operation] {
+class CollectionMonitor[T <: ModelObject](collection: DBCollection[T], mongoCollection: MongoCollection[Document]) extends Reaction[Operation] {
   private lazy val ns: String = s"${collection.db.name}.${collection.collectionName}"
 
   /**
@@ -113,7 +114,7 @@ class CollectionMonitor[T <: ModelObject](collection: DBCollection[T]) extends R
   }
 
   private def subscribe(startAt: Option[BsonTimestamp] = None, awaitTime: Duration = 10.hours): Unit = {
-    var w = collection.collection.watch[Document]().maxAwaitTime(awaitTime).fullDocument(FullDocument.UPDATE_LOOKUP)
+    var w = mongoCollection.watch[Document]().maxAwaitTime(awaitTime).fullDocument(FullDocument.UPDATE_LOOKUP)
     startAt.foreach { timestamp =>
       w = w.startAtOperationTime(timestamp)
     }

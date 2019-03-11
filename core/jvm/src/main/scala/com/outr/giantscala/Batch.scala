@@ -1,13 +1,14 @@
 package com.outr.giantscala
 
-import org.mongodb.scala.BulkWriteResult
+import org.mongodb.scala.{BulkWriteResult, MongoCollection}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model._
 
 import scala.concurrent.Future
-import org.mongodb.scala.model.Filters.{equal, in}
+import org.mongodb.scala.model.Filters.equal
 
 case class Batch[T <: ModelObject](collection: DBCollection[T],
+                                   mongoCollection: MongoCollection[Document],
                                    operations: List[WriteModel[Document]] = Nil,
                                    stopOnFailure: Boolean = false,
                                    bypassDocumentValidation: Boolean = false) {
@@ -32,6 +33,6 @@ case class Batch[T <: ModelObject](collection: DBCollection[T],
 
   def execute(): Future[BulkWriteResult] = {
     val options = BulkWriteOptions().ordered(stopOnFailure).bypassDocumentValidation(bypassDocumentValidation)
-    collection.collection.bulkWrite(operations, options).toFuture()
+    mongoCollection.bulkWrite(operations, options).toFuture()
   }
 }

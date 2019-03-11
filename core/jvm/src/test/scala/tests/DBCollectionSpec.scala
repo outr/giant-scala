@@ -147,13 +147,6 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         p._id should be("personA")
       }
     }
-    "query Person A back in a raw aggregate query" in {
-      Database.person.collection.aggregate(List(
-        Document("""{$match: {name: "Person A"}}""")
-      )).toFuture().map(_.map(Database.person.converter.fromDocument)).map { people =>
-        people.map(_.name) should be(List("Person A"))
-      }
-    }
     "query Person A back in a aggregate DSL query" in {
       import Database.person._
       aggregate

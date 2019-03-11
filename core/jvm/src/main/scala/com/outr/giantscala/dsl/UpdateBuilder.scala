@@ -3,12 +3,14 @@ package com.outr.giantscala.dsl
 import com.mongodb.client.model.UpdateOptions
 import com.outr.giantscala.{DBCollection, Field, ModelObject}
 import io.circe.{Json, Printer}
+import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.result.UpdateResult
 
 import scala.concurrent.{ExecutionContext, Future}
 
 case class UpdateBuilder[Type <: ModelObject](collection: DBCollection[Type],
+                                              mongoCollection: MongoCollection[Document],
                                               many: Boolean,
                                               conditions: List[MatchCondition] = Nil,
                                               modifications: Map[String, Json] = Map.empty,
@@ -47,9 +49,9 @@ case class UpdateBuilder[Type <: ModelObject](collection: DBCollection[Type],
     val options = new UpdateOptions
     options.upsert(upsert)
     if (many) {
-      collection.collection.updateMany(filter, update, options).toFuture()
+      mongoCollection.updateMany(filter, update, options).toFuture()
     } else {
-      collection.collection.updateOne(filter, update, options).toFuture()
+      mongoCollection.updateOne(filter, update, options).toFuture()
     }
   }
 }

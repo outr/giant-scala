@@ -25,11 +25,11 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
     }
   }
 
-  lazy val collection: MongoCollection[Document] = db.getCollection(collectionName)
+  private lazy val collection: MongoCollection[Document] = db.getCollection(collectionName)
 
   val converter: Converter[T]
 
-  lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this)
+  lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this, collection)
 
   def indexes: List[Index]
 
@@ -51,11 +51,11 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
     ()
   }
 
-  lazy val batch: Batch[T] = Batch[T](this)
+  lazy val batch: Batch[T] = Batch[T](this, collection)
 
-  lazy val aggregate: AggregateBuilder[T, T] = AggregateBuilder(this, converter)
-  lazy val updateOne: UpdateBuilder[T] = UpdateBuilder[T](this, many = false)
-  lazy val updateMany: UpdateBuilder[T] = UpdateBuilder[T](this, many = true)
+  lazy val aggregate: AggregateBuilder[T, T] = AggregateBuilder(this, collection, converter)
+  lazy val updateOne: UpdateBuilder[T] = UpdateBuilder[T](this, collection, many = false)
+  lazy val updateMany: UpdateBuilder[T] = UpdateBuilder[T](this, collection, many = true)
 
   def deleteOne(conditions: MatchCondition*): Future[Either[DBFailure, DeleteResult]] = {
     val json = conditions.foldLeft(Json.obj())((json, condition) => json.deepMerge(condition.json))

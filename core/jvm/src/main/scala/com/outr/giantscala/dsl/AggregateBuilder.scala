@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import com.outr.giantscala._
 import io.circe.{Json, Printer}
-import org.mongodb.scala.{AggregateObservable, Observer}
+import org.mongodb.scala.{AggregateObservable, MongoCollection, Observer}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.Collation
@@ -15,6 +15,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
 
 case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[Type],
+                                                      mongoCollection: MongoCollection[Document],
                                                       converter: Converter[Out],
                                                       pipeline: List[AggregateInstruction] = Nil,
                                                       _allowDiskUse: Boolean = false,
@@ -103,7 +104,7 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
   }
 
   private def createAggregate(): AggregateObservable[Document] = {
-    val a = collection.collection.aggregate(documents)
+    val a = mongoCollection.aggregate(documents)
     if (_allowDiskUse) a.allowDiskUse(_allowDiskUse)
     _maxTime.foreach(a.maxTime)
     _maxAwaitTime.foreach(a.maxAwaitTime)
