@@ -8,11 +8,19 @@ import scala.language.implicitConversions
 trait Implicits {
   def field[T](name: String): Field[T] = Field[T](name)
 
-  def or(conditions: MatchCondition*): MatchCondition = {
-    MatchCondition(Json.obj("$or" -> Json.fromValues(conditions.map(_.json))))
+  def and(conditions: MatchCondition*): MatchCondition = {
+    MatchCondition(Json.obj("$and" -> Json.fromValues(conditions.map(_.json))))
   }
 
-  def and(conditions: MatchCondition*): MatchCondition = {
+  def not(conditions: MatchCondition*): MatchCondition = {
+    MatchCondition(Json.obj("$not" -> Json.fromValues(conditions.map(_.json))))
+  }
+
+  def nor(conditions: MatchCondition*): MatchCondition = {
+    MatchCondition(Json.obj("$nor" -> Json.fromValues(conditions.map(_.json))))
+  }
+
+  def or(conditions: MatchCondition*): MatchCondition = {
     MatchCondition(Json.obj("$or" -> Json.fromValues(conditions.map(_.json))))
   }
 
@@ -32,9 +40,13 @@ trait Implicits {
     }
   }
 
-  implicit class FieldExtras[T](f: Field[T]) {
+  implicit class FieldMatching[T](f: Field[T]) {
     def ===(value: T)
            (implicit encoder: Encoder[T]): MatchCondition = MatchCondition(Json.obj(f.name -> encoder(value)))
+    def !==(value: T)
+           (implicit encoder: Encoder[T]): MatchCondition = MatchCondition(Json.obj(f.name -> Json.obj("$ne" -> encoder(value))))
+    def ne(value: T)
+          (implicit encoder: Encoder[T]): MatchCondition = MatchCondition(Json.obj(f.name -> Json.obj("$ne" -> encoder(value))))
     def >(value: T)(implicit encoder: Encoder[T]): MatchCondition = {
       MatchCondition(Json.obj(f.name -> Json.obj("$gt" -> encoder(value))))
     }
@@ -47,14 +59,60 @@ trait Implicits {
     def <=(value: T)(implicit encoder: Encoder[T]): MatchCondition = {
       MatchCondition(Json.obj(f.name -> Json.obj("$lte" -> encoder(value))))
     }
+    def isNull: MatchCondition = MatchCondition(Json.obj(f.name -> Json.Null))
+    def notNull: MatchCondition = MatchCondition(Json.obj(f.name -> Json.obj("$ne" -> Json.Null)))
+    def exists: MatchCondition = MatchCondition(Json.obj(f.name -> Json.obj("$exists" -> Json.True)))
+    def mod(modulo: Int, equals: Int): MatchCondition = MatchCondition(Json.obj(f.name -> Json.obj("$mod" -> Json.arr(Json.fromInt(modulo), Json.fromInt(equals)))))
+    def modulus(modulo: Int, equals: Int): MatchCondition = mod(modulo, equals)
+    def text(search: String,
+             language: Option[String] = None,
+             caseSensitive: Boolean = false,
+             diacriticSensitive: Boolean = false): MatchCondition = {
+      var json = Json.obj("$search" -> Json.fromString(search))
+      language.foreach(l => json = json.deepMerge(Json.obj("$language" -> Json.fromString(l))))
+      if (caseSensitive) json = json.deepMerge(Json.obj("$caseSensitive" -> Json.True))
+      if (diacriticSensitive) json = json.deepMerge(Json.obj("diacriticSensitive" -> Json.True))
+      MatchCondition(Json.obj("$text" -> json))
+    }
+    def where(jsExpression: String): MatchCondition = MatchCondition(Json.obj(f.name -> Json.obj("$where" -> Json.fromString(jsExpression))))
+
+    /**
+      * See https://docs.mongodb.com/manual/reference/operator/query/regex/
+      */
+    def regex(pattern: String,
+              caseInsensitive: Boolean = false,
+              multiLine: Boolean = false,
+              extended: Boolean = false,
+              dotMatchesNewLine: Boolean = false): MatchCondition = {
+      val options = new StringBuilder
+      if (caseInsensitive) options.append('i')
+      if (multiLine) options.append('m')
+      if (extended) options.append('x')
+      if (dotMatchesNewLine) options.append('s')
+      MatchCondition(Json.obj(f.name -> Json.obj(
+        "$regex" -> Json.fromString(pattern),
+        "$options" -> Json.fromString(options.toString())
+      )))
+    }
 
     def in(values: T*)
           (implicit encoder: Encoder[T]): MatchCondition = {
       MatchCondition(Json.obj(f.name -> Json.obj("$in" -> Json.arr(values.map(encoder.apply): _*))))
     }
+    def nin(values: T*)
+           (implicit encoder: Encoder[T]): MatchCondition = {
+      MatchCondition(Json.obj(f.name -> Json.obj("$nin" -> Json.arr(values.map(encoder.apply): _*))))
+    }
+    def notIn(values: T*)(implicit encoder: Encoder[T]): MatchCondition = nin(values: _*)(encoder)
+    def all(values: T*)(implicit encoder: Encoder[T]): MatchCondition = {
+      MatchCondition(Json.obj("$all" -> Json.arr(values.map(encoder.apply): _*)))
+    }
     def size(value: Int): MatchCondition = {
       MatchCondition(Json.obj(f.name -> Json.obj("$size" -> Json.fromInt(value))))
     }
+  }
+
+  implicit class FieldProjection[T](f: Field[T]) {
     def include: ProjectField = ProjectField.Include(f)
     def exclude: ProjectField = ProjectField.Exclude(f)
     def objectToArray(arrayName: String): ProjectField = {

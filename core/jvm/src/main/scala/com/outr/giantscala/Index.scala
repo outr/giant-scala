@@ -92,7 +92,7 @@ object Index {
         hashed(index.fields.head)
       }
       case c: Compound => {
-        assert(c.indexes.nonEmpty, "A Compount index must have at least one child index!")
+        assert(c.indexes.nonEmpty, "A Compound index must have at least one child index!")
         compoundIndex(c.indexes.map(Index.toBSON): _*)
       }
     }
