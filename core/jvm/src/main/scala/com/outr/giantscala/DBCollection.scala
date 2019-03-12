@@ -1,13 +1,13 @@
 package com.outr.giantscala
 
-import com.outr.giantscala.dsl.{AggregateBuilder, Implicits, MatchCondition, UpdateBuilder}
+import com.outr.giantscala.dsl._
 import com.outr.giantscala.failure.{DBFailure, FailureType}
 import com.outr.giantscala.oplog.CollectionMonitor
 import io.circe.{Json, Printer}
-import org.mongodb.scala.{BulkWriteResult, MongoCollection, MongoException}
+import org.mongodb.scala.{BulkWriteResult, MongoCollection, MongoException, MongoNamespace}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters.{equal, in}
-import org.mongodb.scala.model.ReplaceOptions
+import org.mongodb.scala.model.RenameCollectionOptions
 import org.mongodb.scala.result.DeleteResult
 
 import scala.language.experimental.macros
@@ -56,6 +56,7 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
   lazy val aggregate: AggregateBuilder[T, T] = AggregateBuilder(this, collection, converter)
   lazy val updateOne: UpdateBuilder[T] = UpdateBuilder[T](this, collection, many = false)
   lazy val updateMany: UpdateBuilder[T] = UpdateBuilder[T](this, collection, many = true)
+  def replaceOne(replacement: T): ReplaceOneBuilder[T] = ReplaceOneBuilder[T](this, collection, replacement)
 
   def deleteOne(conditions: MatchCondition*): Future[Either[DBFailure, DeleteResult]] = {
     val json = conditions.foldLeft(Json.obj())((json, condition) => json.deepMerge(condition.json))
@@ -95,8 +96,7 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
   }
 
   def upsert(value: T): Future[Either[DBFailure, T]] = scribe.async {
-    val doc = converter.toDocument(value)
-    collection.replaceOne(equal("_id", value._id), doc, new ReplaceOptions().upsert(true)).toFuture().map(_ => value).either
+    replaceOne(value).`match`(Field[String]("_id") === value._id).upsert.toFuture.map(_ => value).either
   }
 
   def upsert(values: Seq[T]): Future[BulkWriteResult] = scribe.async {
@@ -150,6 +150,12 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
   }
 
   def count(): Future[Long] = scribe.async(collection.estimatedDocumentCount().toFuture())
+
+  def rename(newName: String, dropTarget: Boolean = false): Future[Either[DBFailure, Unit]] = {
+    val options = new RenameCollectionOptions
+    if (dropTarget) options.dropTarget(true)
+    collection.renameCollection(MongoNamespace(newName), options).toFuture().map(_ => ()).either
+  }
 
   def delete(id: String): Future[Either[DBFailure, Unit]] = scribe.async {
     collection.deleteOne(Document("_id" -> id)).toFuture().map(_ => ()).either
