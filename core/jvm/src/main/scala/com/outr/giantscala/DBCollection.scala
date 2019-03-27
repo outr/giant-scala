@@ -41,7 +41,7 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
     _ <- Future.sequence(indexes.map(_.create(collection)))
     stored <- storedIndexes
     delete = stored.collect {
-      case storedIndex if !indexes.exists(_.fields.toSet == storedIndex.fields) && storedIndex.name != "_id_" => {
+      case storedIndex if !indexes.exists(_.fields.map(_.fieldName).toSet == storedIndex.fields) && storedIndex.name != "_id_" => {
         scribe.warn(s"Deleting existing index: ${storedIndex.ns}.${storedIndex.name}")
         storedIndex
       }

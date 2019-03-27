@@ -5,7 +5,6 @@ import com.outr.giantscala.dsl.SortField
 import com.outr.giantscala.failure.FailureType
 import com.outr.giantscala.oplog.Delete
 import io.circe.Printer
-import org.mongodb.scala.bson.collection.immutable.Document
 import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
 import reactify.Channel
 import scribe.Logger
