@@ -4,7 +4,7 @@ import io.circe.Json
 
 import scala.language.experimental.macros
 
-class Field[T](val name: String) {
+class Field[T](val fieldName: String) {
   def apply(value: T): Json = macro SharedMacros.fieldValue[T]
 }
 

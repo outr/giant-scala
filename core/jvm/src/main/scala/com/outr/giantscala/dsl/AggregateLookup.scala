@@ -10,8 +10,8 @@ case class AggregateLookup[Other <: ModelObject, T](from: DBCollection[Other],
   override def json: Json = Json.obj(
     "$lookup" -> Json.obj(
       "from" -> Json.fromString(from.collectionName),
-      "localField" -> Json.fromString(localField.name),
-      "foreignField" -> Json.fromString(foreignField.name),
+      "localField" -> Json.fromString(localField.fieldName),
+      "foreignField" -> Json.fromString(foreignField.fieldName),
       "as" -> Json.fromString(as)
     )
   )

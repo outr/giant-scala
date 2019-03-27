@@ -14,12 +14,12 @@ trait ProjectField extends AggregateInstruction
 
 object ProjectField {
   case class Include[T](field: Field[T]) extends ProjectField {
-    override def json: Json = Json.obj(field.name -> Json.fromInt(1))
+    override def json: Json = Json.obj(field.fieldName -> Json.fromInt(1))
   }
   case class Exclude[T](field: Field[T]) extends ProjectField {
-    override def json: Json = Json.obj(field.name -> Json.fromInt(0))
+    override def json: Json = Json.obj(field.fieldName -> Json.fromInt(0))
   }
   case class Operator[T](field: Field[T], value: Json) extends ProjectField {
-    override def json: Json = Json.obj(field.name -> value)
+    override def json: Json = Json.obj(field.fieldName -> value)
   }
 }

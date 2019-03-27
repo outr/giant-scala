@@ -22,7 +22,7 @@ case class UpdateBuilder[Type <: ModelObject](collection: DBCollection[Type],
   def set(values: Json*): UpdateBuilder[Type] = withModifications("$set", values: _*)
   def setOnInsert(values: Json*): UpdateBuilder[Type] = withModifications("$setOnInsert", values: _*)
   def unset(fields: Field[_]*): UpdateBuilder[Type] = {
-    withModifications("$unset", fields.map(f => Json.obj(f.name -> Json.fromString(""))): _*)
+    withModifications("$unset", fields.map(f => Json.obj(f.fieldName -> Json.fromString(""))): _*)
   }
   def rename(tuples: (String, String)*): UpdateBuilder[Type] = {
     withModifications("$rename", tuples.map {

@@ -9,11 +9,11 @@ sealed trait SortField {
 
 object SortField {
   case class Ascending[T](field: Field[T]) extends SortField {
-    override def fieldName: String = field.name
+    override def fieldName: String = field.fieldName
     override def direction: Int = 1
   }
   case class Descending[T](field: Field[T]) extends SortField {
-    override def fieldName: String = field.name
+    override def fieldName: String = field.fieldName
     override def direction: Int = -1
   }
 }

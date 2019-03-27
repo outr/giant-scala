@@ -85,7 +85,7 @@ object GiantScalaPlugin extends sbt.AutoPlugin {
               val subFields = caseEntries.map {
                 case (nme, tpe) => {
                   val subType = tpe.toString.replaceAllLiterally("Predef.", "")
-                  s"""val ${encodedName(nme.decodedName.toString)}: Field[$subType] = Field[$subType]("$nme")"""
+                  s"""val ${encodedName(nme.decodedName.toString)}: Field[$subType] = Field[$subType]("$name.$nme")"""
                 }
               }
               s"""object $encName extends Field[${`type`}]("$name") {

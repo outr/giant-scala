@@ -60,7 +60,7 @@ object Macros {
     import c.universe._
 
     q"""
-       ${c.prefix}.as[$t](_root_.com.outr.giantscala.Converter.auto[$t]).replaceRoot(_root_.io.circe.Json.fromString($field.name))
+       ${c.prefix}.as[$t](_root_.com.outr.giantscala.Converter.auto[$t]).replaceRoot(_root_.io.circe.Json.fromString($field.fieldName))
      """
   }
 }

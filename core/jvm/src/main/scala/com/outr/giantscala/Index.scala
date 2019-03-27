@@ -12,7 +12,7 @@ import scribe.Execution.global
 
 import scala.concurrent.duration.TimeUnit
 
-case class Index private(`type`: IndexType, fields: List[String], properties: IndexProperties = IndexProperties()) {
+case class Index private(`type`: IndexType, fields: List[Field[_]], properties: IndexProperties = IndexProperties()) {
   private[giantscala] def create(collection: MongoCollection[Document]): Future[Unit] = {
     assert(fields.nonEmpty, "An index must contain at least one field!")
 
@@ -67,8 +67,8 @@ object Index {
   private val NameRegex = """Index with name: (.+) already exists with different options""".r
 
   sealed trait IndexType {
-    def apply(fields: String*): Index = Index(this, fields.toList)
-    def multiple(fields: String*): List[Index] = fields.toList.map(apply(_))
+    def apply(fields: Field[_]*): Index = Index(this, fields.toList)
+    def multiple(fields: Field[_]*): List[Index] = fields.toList.map(apply(_))
   }
 
   case object Ascending extends IndexType
@@ -81,15 +81,15 @@ object Index {
     import org.mongodb.scala.model.Indexes._
 
     index.`type` match {
-      case Ascending => ascending(index.fields: _*)
-      case Descending => descending(index.fields: _*)
+      case Ascending => ascending(index.fields.map(_.fieldName): _*)
+      case Descending => descending(index.fields.map(_.fieldName): _*)
       case Text => {
         assert(index.fields.lengthCompare(1) == 0, "A Text index must include exactly one index!")
-        text(index.fields.head)
+        text(index.fields.head.fieldName)
       }
       case Hashed => {
         assert(index.fields.lengthCompare(1) == 0, "A Hashed index must include exactly one index!")
-        hashed(index.fields.head)
+        hashed(index.fields.head.fieldName)
       }
       case c: Compound => {
         assert(c.indexes.nonEmpty, "A Compound index must have at least one child index!")

@@ -12,7 +12,7 @@ object SharedMacros {
        import io.circe.Json
        import profig.JsonUtil
 
-       Json.obj(${c.prefix}.name -> JsonUtil.toJson($value))
+       Json.obj(${c.prefix}.fieldName -> JsonUtil.toJson($value))
      """
   }
 }
