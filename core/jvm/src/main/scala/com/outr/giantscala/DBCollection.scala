@@ -135,7 +135,13 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
       sample(querySize, retries).flatMap {
         case Left(dbf) => Future.successful(Left(dbf))
         case Right(values) => {
-          largeSample(size, groupSize, retries, samples ++ values)
+          val merged = samples ++ values
+          if (merged == samples) {
+            scribe.warn(s"Reached maximum samples: ${merged.size}, wanted $querySize more but could not find more samples")
+            Future.successful(Right(merged))
+          } else {
+            largeSample(size, groupSize, retries, merged)
+          }
         }
       }
     } else {
