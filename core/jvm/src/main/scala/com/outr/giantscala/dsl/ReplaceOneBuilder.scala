@@ -9,7 +9,7 @@ import org.mongodb.scala.result.UpdateResult
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class ReplaceOneBuilder[Type <: ModelObject](collection: DBCollection[Type],
+case class ReplaceOneBuilder[Type <: ModelObject[Type]](collection: DBCollection[Type],
                                                   mongoCollection: MongoCollection[Document],
                                                   replacement: Type,
                                                   conditions: List[MatchCondition] = Nil,

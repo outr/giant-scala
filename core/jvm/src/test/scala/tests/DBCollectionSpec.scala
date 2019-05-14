@@ -7,8 +7,8 @@ import com.outr.giantscala.oplog.Delete
 import io.circe.Printer
 import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
 import reactify.Channel
-import scribe.Logger
-import scribe.format._
+import scribe.{Level, Logger}
+import scribe.format.Formatter
 import scribe.modify.ClassNameFilter
 
 import scala.collection.mutable.ListBuffer
@@ -21,10 +21,15 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
     var deletes = ListBuffer.empty[Delete]
 
     "reconfigure logging" in {
-      Logger.root.clearHandlers().withHandler(
-        formatter = formatter"$date $levelPaddedRight $position - ${scribe.format.message}$newLine",
-        modifiers = List(ClassNameFilter.startsWith("org.mongodb.driver.cluster", exclude = true))
-      ).replace()
+      Logger
+        .root
+        .clearHandlers()
+        .withHandler(
+          formatter = Formatter.enhanced,
+          modifiers = List(ClassNameFilter.startsWith("org.mongodb.driver.cluster", exclude = true)),
+          minimumLevel = Some(Level.Info)
+        )
+        .replace()
       Future.successful(succeed)
     }
     "drop the database so it's clean and ready" in {
@@ -57,12 +62,16 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       value should be("""{"MyField":"test"}""")
     }
     "insert a person" in {
-      Database.person.insert(Person(name = "John Doe", age = 30, _id = "john.doe")).map { result =>
+      Database.person.insert(Person(
+        name = "John Doe",
+        age = 30,
+        _id = Database.person.id("john.doe")
+      )).map { result =>
         result.isRight should be(true)
         val p = result.right.get
         p.name should be("John Doe")
         p.age should be(30)
-        p._id should be("john.doe")
+        p._id should be(Database.person.id("john.doe"))
       }
     }
     // TODO: uncomment when monitoring consistently works (only works sometimes)
@@ -80,7 +89,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         val p = people.head
         p.name should be("John Doe")
         p.age should be(30)
-        p._id should be("john.doe")
+        p._id should be(Database.person.id("john.doe"))
       }
     }
     "query back by name" in {
@@ -89,11 +98,15 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         val p = people.head
         p.name should be("John Doe")
         p.age should be(30)
-        p._id should be("john.doe")
+        p._id should be(Database.person.id("john.doe"))
       }
     }
     "trigger constraint violation inserting the same name twice" in {
-      Database.person.insert(Person(name = "John Doe", age = 31, _id = "john.doe2")).map { result =>
+      Database.person.insert(Person(
+        name = "John Doe",
+        age = 31,
+        _id = Database.person.id("john.doe2")
+      )).map { result =>
         result.isLeft should be(true)
         val failure = result.left.get
         failure.`type` should be(FailureType.DuplicateKey)
@@ -115,8 +128,8 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
     "do a batch insert" in {
       inserts.clear()
       Database.person.batch.insert(
-        Person("Person A", 1, _id = "personA"),
-        Person("Person B", 2, _id = "personB")
+        Person("Person A", 1, _id = Database.person.id("personA")),
+        Person("Person B", 2, _id = Database.person.id("personB"))
       ).execute().map { result =>
         result.getInsertedCount should be(2)
       }
@@ -126,13 +139,13 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         val p = inserts.head
         p.name should be("Person A")
         p.age should be(1)
-        p._id should be("personA")
+        p._id should be(Database.person.id("personA"))
       }
     }
     "do a batch update" in {
       Database.person.batch.update(
-        Person("Person A", 123, _id = "personA"),
-        Person("Person B", 234, _id = "personB")
+        Person("Person A", 123, _id = Database.person.id("personA")),
+        Person("Person B", 234, _id = Database.person.id("personB"))
       ).execute().map { result =>
         result.getModifiedCount should be(2)
       }
@@ -143,7 +156,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         val p = people.head
         p.name should be("Person A")
         p.age should be(123)
-        p._id should be("personA")
+        p._id should be(Database.person.id("personA"))
       }
     }
     "query Person A back in a aggregate DSL query" in {
@@ -306,7 +319,7 @@ case class Person(name: String,
                   age: Int,
                   created: Long = System.currentTimeMillis(),
                   modified: Long = System.currentTimeMillis(),
-                  _id: String) extends ModelObject
+                  _id: Id[Person]) extends ModelObject[Person]
 
 case class PersonName(name: String)
 
@@ -317,7 +330,7 @@ class PersonCollection extends DBCollection[Person]("person", Database) {
   val age: Field[Int] = Field("age")
   val created: Field[Long] = Field("created")
   val modified: Field[Long] = Field("modified")
-  val _id: Field[String] = Field("_id")
+  val _id: Field[Id[Person]] = Field("_id")
 
   override val converter: Converter[Person] = Converter.auto[Person]
 

@@ -9,7 +9,7 @@ import org.mongodb.scala.result.UpdateResult
 
 import scala.concurrent.{ExecutionContext, Future}
 
-case class UpdateBuilder[Type <: ModelObject](collection: DBCollection[Type],
+case class UpdateBuilder[Type <: ModelObject[Type]](collection: DBCollection[Type],
                                               mongoCollection: MongoCollection[Document],
                                               many: Boolean,
                                               conditions: List[MatchCondition] = Nil,

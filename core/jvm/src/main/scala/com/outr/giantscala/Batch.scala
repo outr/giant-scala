@@ -7,7 +7,7 @@ import org.mongodb.scala.model._
 import scala.concurrent.Future
 import org.mongodb.scala.model.Filters.equal
 
-case class Batch[T <: ModelObject](collection: DBCollection[T],
+case class Batch[T <: ModelObject[T]](collection: DBCollection[T],
                                    mongoCollection: MongoCollection[Document],
                                    operations: List[WriteModel[Document]] = Nil,
                                    stopOnFailure: Boolean = false,
@@ -15,16 +15,16 @@ case class Batch[T <: ModelObject](collection: DBCollection[T],
   def withOps(ops: Seq[WriteModel[Document]]): Batch[T] = copy(operations = operations ::: ops.toList)
   def insert(values: T*): Batch[T] = withOps(values.map(v => InsertOneModel(collection.converter.toDocument(v))))
   def update(values: T*): Batch[T] = withOps(values.map(v => ReplaceOneModel(
-    filter = equal("_id", v._id),
+    filter = equal("_id", v._id.value),
     replacement = collection.converter.toDocument(v)
   )))
   def upsert(values: T*): Batch[T] = withOps(values.map(v => ReplaceOneModel(
-    filter = equal("_id", v._id),
+    filter = equal("_id", v._id.value),
     replacement = collection.converter.toDocument(v),
     replaceOptions = new ReplaceOptions().upsert(true)
   )))
-  def delete(ids: String*): Batch[T] = {
-    withOps(ids.map(id => DeleteOneModel(Document("_id" -> id))).asInstanceOf[Seq[WriteModel[Document]]])
+  def delete(ids: Id[T]*): Batch[T] = {
+    withOps(ids.map(id => DeleteOneModel(Document("_id" -> id.value))).asInstanceOf[Seq[WriteModel[Document]]])
   }
   def options(stopOnFailure: Boolean = this.stopOnFailure,
               bypassDocumentValidation: Boolean = this.bypassDocumentValidation): Batch[T] = {

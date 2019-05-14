@@ -16,7 +16,7 @@ import scribe.Execution.global
 
 import scala.language.implicitConversions
 
-abstract class DBCollection[T <: ModelObject](val collectionName: String, val db: MongoDatabase) extends Implicits {
+abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val db: MongoDatabase) extends Implicits {
   db.addCollection(this)
 
   implicit class EnhancedFuture[Result](future: Future[Result]) {
@@ -30,6 +30,8 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
   val converter: Converter[T]
 
   lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this, collection)
+
+  def id(id: String): Id[T] = Id[T](collectionName, id)
 
   def indexes: List[Index]
 
@@ -96,7 +98,7 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
   }
 
   def upsert(value: T): Future[Either[DBFailure, T]] = scribe.async {
-    replaceOne(value).`match`(Field[String]("_id") === value._id).upsert.toFuture.map(_ => value).either
+    replaceOne(value).`match`(Field[Id[T]]("_id") === value._id).upsert.toFuture.map(_ => value).either
   }
 
   def upsert(values: Seq[T]): Future[BulkWriteResult] = scribe.async {
@@ -163,12 +165,12 @@ abstract class DBCollection[T <: ModelObject](val collectionName: String, val db
     collection.renameCollection(MongoNamespace(newName), options).toFuture().map(_ => ()).either
   }
 
-  def delete(id: String): Future[Either[DBFailure, Unit]] = scribe.async {
-    collection.deleteOne(Document("_id" -> id)).toFuture().map(_ => ()).either
+  def delete(id: Id[T]): Future[Either[DBFailure, Unit]] = scribe.async {
+    collection.deleteOne(Document("_id" -> id.value)).toFuture().map(_ => ()).either
   }
 
-  def delete(ids: Seq[String]): Future[Either[DBFailure, Int]] = scribe.async {
-    collection.deleteMany(in("_id", ids: _*)).toFuture().map(_ => ids.length).either
+  def delete(id: Seq[Id[T]]): Future[Either[DBFailure, Int]] = scribe.async {
+    collection.deleteMany(in("_id", id.map(_.value): _*)).toFuture().map(_ => id.length).either
   }
 
   def drop(): Future[Unit] = scribe.async(collection.drop().toFuture().map(_ => ()))

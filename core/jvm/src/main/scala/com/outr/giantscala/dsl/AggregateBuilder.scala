@@ -14,17 +14,17 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
 
-case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[Type],
-                                                      mongoCollection: MongoCollection[Document],
-                                                      converter: Converter[Out],
-                                                      pipeline: List[AggregateInstruction] = Nil,
-                                                      _allowDiskUse: Boolean = false,
-                                                      _maxTime: Option[Duration] = None,
-                                                      _maxAwaitTime: Option[Duration] = None,
-                                                      _bypassDocumentValidation: Boolean = false,
-                                                      _collation: Option[Collation] = None,
-                                                      _comment: Option[String] = None,
-                                                      _hint: Option[Bson] = None) {
+case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollection[Type],
+                                                            mongoCollection: MongoCollection[Document],
+                                                            converter: Converter[Out],
+                                                            pipeline: List[AggregateInstruction] = Nil,
+                                                            _allowDiskUse: Boolean = false,
+                                                            _maxTime: Option[Duration] = None,
+                                                            _maxAwaitTime: Option[Duration] = None,
+                                                            _bypassDocumentValidation: Boolean = false,
+                                                            _collation: Option[Collation] = None,
+                                                            _comment: Option[String] = None,
+                                                            _hint: Option[Bson] = None) {
   def withPipeline(instructions: AggregateInstruction*): AggregateBuilder[Type, Out] = {
     copy(pipeline = pipeline ::: instructions.toList)
   }
@@ -37,7 +37,7 @@ case class AggregateBuilder[Type <: ModelObject, Out](collection: DBCollection[T
   def project(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateProject(fields.toList))
   def group(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateGroup(fields.toList))
   def sample(size: Int): AggregateBuilder[Type, Out] = withPipeline(AggregateSample(size))
-  def lookup[Other <: ModelObject, T](from: DBCollection[Other],
+  def lookup[Other <: ModelObject[Other], T](from: DBCollection[Other],
                                       localField: Field[T],
                                       foreignField: Field[T],
                                       as: String): AggregateBuilder[Type, Out] = {

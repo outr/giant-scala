@@ -14,7 +14,8 @@ import reactify._
 
 import _root_.scala.concurrent.duration._
 
-class CollectionMonitor[T <: ModelObject](collection: DBCollection[T], mongoCollection: MongoCollection[Document]) extends Reaction[Operation] {
+class CollectionMonitor[T <: ModelObject[T]](collection: DBCollection[T],
+                                             mongoCollection: MongoCollection[Document]) extends Reaction[Operation] {
   private lazy val ns: String = s"${collection.db.name}.${collection.collectionName}"
 
   /**

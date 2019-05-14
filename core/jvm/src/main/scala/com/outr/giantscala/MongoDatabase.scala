@@ -87,8 +87,8 @@ class MongoDatabase(val name: String,
   private val _initialized = new AtomicBoolean(false)
   def initialized: Boolean = _initialized.get()
 
-  private var _collections = Set.empty[DBCollection[_ <: ModelObject]]
-  def collections: Set[DBCollection[_ <: ModelObject]] = _collections
+  private var _collections = Set.empty[DBCollection[_ <: ModelObject[_]]]
+  def collections: Set[DBCollection[_ <: ModelObject[_]]] = _collections
 
   /**
     * Key/Value store functionality against MongoDB
@@ -193,7 +193,7 @@ class MongoDatabase(val name: String,
 
   case class DatabaseVersion(upgrades: Set[String] = Set.empty, _id: String = "databaseVersion")
 
-  private[giantscala] def addCollection(collection: DBCollection[_ <: ModelObject]): Unit = synchronized {
+  private[giantscala] def addCollection(collection: DBCollection[_ <: ModelObject[_]]): Unit = synchronized {
     _collections += collection
   }
 
