@@ -9,7 +9,6 @@ import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
 import reactify.Channel
 import scribe.{Level, Logger}
 import scribe.format.Formatter
-import scribe.modify.ClassNameFilter
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -26,7 +25,6 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         .clearHandlers()
         .withHandler(
           formatter = Formatter.enhanced,
-          modifiers = List(ClassNameFilter.startsWith("org.mongodb.driver.cluster", exclude = true)),
           minimumLevel = Some(Level.Info)
         )
         .replace()
