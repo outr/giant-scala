@@ -6,6 +6,8 @@ import scala.language.experimental.macros
 
 class Field[T](val fieldName: String) {
   def apply(value: T): Json = macro SharedMacros.fieldValue[T]
+
+  def opt: Field[Option[T]] = Field[Option[T]](fieldName)
 }
 
 object Field {

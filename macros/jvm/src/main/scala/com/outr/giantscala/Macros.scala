@@ -12,6 +12,7 @@ object Macros {
     q"""
        import _root_.org.mongodb.scala.bson.collection.immutable.Document
        import _root_.profig.JsonUtil
+       import _root_.com.outr.giantscala._
 
        new Converter[$t] {
          override def toDocument(t: $t): Document = {
