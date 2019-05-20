@@ -31,7 +31,7 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
 
   lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this, collection)
 
-  def id(id: String): Id[T] = Id[T](collectionName, id)
+  def id(id: String): Id[T] = Id[T](id)
 
   def indexes: List[Index]
 
@@ -86,7 +86,7 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
 
   def update(value: T): Future[Either[DBFailure, T]] = scribe.async {
     val doc = converter.toDocument(value)
-    collection.replaceOne(equal("_id", value._id), doc).toFuture().map(_ => value).either
+    collection.replaceOne(equal("_id", value._id.value), doc).toFuture().map(_ => value).either
   }
 
   def update(values: Seq[T]): Future[BulkWriteResult] = scribe.async {
@@ -109,8 +109,8 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
     b.execute()
   }
 
-  def byIds(ids: Seq[String]): Future[List[T]] = scribe.async {
-    collection.find(in("_id", ids: _*)).toFuture().map { documents =>
+  def byIds(ids: Seq[Id[T]]): Future[List[T]] = scribe.async {
+    collection.find(in("_id", ids.map(_.value): _*)).toFuture().map { documents =>
       documents.map(converter.fromDocument).toList
     }
   }
@@ -151,8 +151,8 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
     }
   }
 
-  def get(id: String): Future[Option[T]] = scribe.async {
-    collection.find(Document("_id" -> id)).toFuture().map { documents =>
+  def get(id: Id[T]): Future[Option[T]] = scribe.async {
+    collection.find(Document("_id" -> id.value)).toFuture().map { documents =>
       documents.headOption.map(converter.fromDocument)
     }
   }
