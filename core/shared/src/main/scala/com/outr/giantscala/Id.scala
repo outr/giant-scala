@@ -3,7 +3,9 @@ package com.outr.giantscala
 import io.circe.Decoder.Result
 import io.circe.{Decoder, Encoder, HCursor, Json}
 
-class Id[T <: ModelObject[T]](val value: String) extends AnyVal
+class Id[T <: ModelObject[T]](val value: String) extends AnyVal {
+  override def toString: String = s"Id($value)"
+}
 
 object Id {
   implicit def encoder[T <: ModelObject[T]]: Encoder[Id[T]] = new Encoder[Id[T]] {
