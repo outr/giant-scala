@@ -2,7 +2,7 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.4.0-SNAPSHOT"
+version in ThisBuild := "1.4.0"
 scalaVersion in ThisBuild := "2.12.8"
 crossScalaVersions in ThisBuild := List("2.12.8", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
@@ -31,14 +31,14 @@ testOptions in ThisBuild += Tests.Argument("-oD")
 
 val scribeVersion = "2.7.6"
 val profigVersion = "2.3.5"
-val youiVersion = "0.11.0"
+val youiVersion = "0.11.1"
 val reactifyVersion = "3.0.3"
 val mongoScalaDriverVersion = "2.6.0"
 val macroParadiseVersion = "2.1.1"
 val scalatestVersion: String = "3.0.5"
 
 lazy val root = project.in(file("."))
-  .aggregate(macrosJS, macrosJVM, coreJS, coreJVM, plugin)
+  .aggregate(macrosJS, macrosJVM, coreJS, coreJVM)
   .settings(
     name := "giant-scala",
     publish := {},
@@ -79,11 +79,10 @@ lazy val coreJS = core.js
 lazy val coreJVM = core.jvm
 
 lazy val plugin = project.in(file("plugin"))
-  .dependsOn(coreJVM)
   .settings(
     name := "giant-scala-plugin",
     sbtPlugin := true,
-    crossSbtVersions := Vector("0.13.17", "1.2.0")
+    crossSbtVersions := Vector("0.13.18", "1.2.8")
   )
 
 lazy val backup = project.in(file("backup"))
