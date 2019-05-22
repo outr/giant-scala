@@ -115,6 +115,12 @@ trait Implicits {
   implicit class FieldProjection[T](f: Field[T]) {
     def include: ProjectField = ProjectField.Include(f)
     def exclude: ProjectField = ProjectField.Exclude(f)
+    def from[Other](other: Field[Other]): ProjectField = new ProjectField {
+      override def json: Json = Json.obj(f.fieldName -> Json.fromString(s"$$${other.fieldName}"))
+    }
+    def first[Other](other: Field[Other]): ProjectField = new ProjectField {
+      override def json: Json = Json.obj(f.fieldName -> Json.obj("$first" -> Json.fromString(s"$$${other.fieldName}")))
+    }
     def objectToArray(arrayName: String): ProjectField = {
       val name = opKey(arrayName)
       ProjectField.Operator(f, Json.obj("$objectToArray" -> Json.fromString(name)))
