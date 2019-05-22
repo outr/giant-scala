@@ -31,6 +31,7 @@ testOptions in ThisBuild += Tests.Argument("-oD")
 
 val scribeVersion = "2.7.6"
 val profigVersion = "2.3.5"
+val youiVersion = "0.11.0"
 val reactifyVersion = "3.0.3"
 val mongoScalaDriverVersion = "2.6.0"
 val macroParadiseVersion = "2.1.1"
@@ -62,6 +63,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
     libraryDependencies ++= Seq(
       "com.outr" %%% "scribe" % scribeVersion,
       "com.outr" %%% "profig" % profigVersion,
+      "io.youi" %%% "youi-core" % youiVersion,
       "com.outr" %%% "reactify" % reactifyVersion,
       "org.scalatest" %%% "scalatest" % scalatestVersion % Test
     ),

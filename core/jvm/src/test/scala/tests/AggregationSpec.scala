@@ -93,7 +93,7 @@ case class Order(item: String,
                  qty: Int,
                  created: Long = AggregationDatabase.now,
                  modified: Long = AggregationDatabase.now,
-                 _id: Id[Order] = Id.Generate) extends ModelObject[Order]
+                 _id: Id[Order] = Id[Order]) extends ModelObject[Order]
 
 class OrderCollection extends DBCollection[Order]("order", AggregationDatabase) {
   val item: Field[String] = Field("item")
