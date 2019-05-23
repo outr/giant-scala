@@ -11,5 +11,7 @@ class Field[T](val fieldName: String) {
 }
 
 object Field {
+  lazy val Root: Field[Unit] = new Field[Unit]("$ROOT")
+
   def apply[T](name: String): Field[T] = new Field[T](name)
 }

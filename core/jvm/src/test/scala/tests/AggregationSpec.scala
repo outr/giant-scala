@@ -84,6 +84,26 @@ class AggregationSpec extends AsyncWordSpec with Matchers {
           ))
         }
     }
+    "aggregate largest orders and replace root" in {
+      import AggregationDatabase._
+      orders
+        .aggregate
+        .sort(SortField.Descending(orders.qty))
+        .group(
+          orders._id.from(orders.item),
+          field[String]("order").first(Field.Root)
+        )
+        .replaceRoot(Field[Order]("$order"))
+        .sort(SortField.Descending(orders.qty))
+        .toFuture
+        .map { orders =>
+          orders.map(o => o.item -> o.qty) should be(List(
+            ("Apple", 24),
+            ("Cherry", 12),
+            ("Banana", 8)
+          ))
+        }
+    }
   }
 
   case class LargestOrder(_id: String, qty: Int)
