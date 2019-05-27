@@ -9,20 +9,14 @@ object Macros {
   def auto[T](c: blackbox.Context)(implicit t: c.WeakTypeTag[T]): c.Tree = {
     import c.universe._
 
+    val decoder = profig.Macros.decoder[T](c)(t)
+    val encoder = profig.Macros.encoder[T](c)(t)
+
     q"""
        import _root_.org.mongodb.scala.bson.collection.immutable.Document
        import _root_.profig.JsonUtil
        import _root_.com.outr.giantscala._
-
-       new Converter[$t] {
-         override def toDocument(t: $t): Document = {
-           Document(JsonUtil.toJsonString(t))
-         }
-
-         override def fromDocument(document: Document): $t = {
-           JsonUtil.fromJsonString[$t](document.toJson(Converter.settings))
-         }
-       }
+       Converter.apply[$t]($decoder, $encoder)
      """
   }
 

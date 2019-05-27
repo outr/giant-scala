@@ -169,8 +169,8 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
     collection.deleteOne(Document("_id" -> id.value)).toFuture().map(_ => ()).either
   }
 
-  def delete(id: Seq[Id[T]]): Future[Either[DBFailure, Int]] = scribe.async {
-    collection.deleteMany(in("_id", id.map(_.value): _*)).toFuture().map(_ => id.length).either
+  def delete(ids: Seq[Id[T]]): Future[Either[DBFailure, Int]] = scribe.async {
+    collection.deleteMany(in("_id", ids.map(_.value): _*)).toFuture().map(_ => ids.length).either
   }
 
   def drop(): Future[Unit] = scribe.async(collection.drop().toFuture().map(_ => ()))

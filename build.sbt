@@ -49,7 +49,10 @@ lazy val macros = crossProject(JVMPlatform, JSPlatform)
   .in(file("macros"))
   .settings(
     name := "giant-scala-macros",
-    libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
+    libraryDependencies ++= Seq(
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      "com.outr" %%% "profig" % profigVersion,
+    )
   )
 
 lazy val macrosJS = macros.js
@@ -62,7 +65,6 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
     name := "giant-scala",
     libraryDependencies ++= Seq(
       "com.outr" %%% "scribe" % scribeVersion,
-      "com.outr" %%% "profig" % profigVersion,
       "io.youi" %%% "youi-core" % youiVersion,
       "com.outr" %%% "reactify" % reactifyVersion,
       "org.scalatest" %%% "scalatest" % scalatestVersion % Test
