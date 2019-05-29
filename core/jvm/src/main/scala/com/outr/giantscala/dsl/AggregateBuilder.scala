@@ -38,10 +38,16 @@ case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollec
   def group(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateGroup(fields.toList))
   def sample(size: Int): AggregateBuilder[Type, Out] = withPipeline(AggregateSample(size))
   def lookup[Other <: ModelObject[Other], T](from: DBCollection[Other],
-                                      localField: Field[T],
-                                      foreignField: Field[T],
-                                      as: String): AggregateBuilder[Type, Out] = {
-    withPipeline(AggregateLookup(from, localField, foreignField, as))
+                                             localField: Field[T],
+                                             foreignField: Field[T],
+                                             as: String): AggregateBuilder[Type, Out] = {
+    withPipeline(AggregateLookup(from, Some(localField), Some(foreignField), as, Nil, Nil))
+  }
+  def lookup[Other <: ModelObject[Other], T](from: DBCollection[Other],
+                                             let: List[ProjectField],
+                                             as: String)
+                                            (f: AggregateBuilder[Other, Other] => AggregateBuilder[Other, Other]): AggregateBuilder[Type, Out] = {
+    withPipeline(AggregateLookup(from, None, None, as, let, Nil).pipeline(f))
   }
   def replaceRoot[T](field: Field[T]): AggregateBuilder[Type, T] = macro Macros.aggregateReplaceRoot[T]
   def replaceRoot(json: Json): AggregateBuilder[Type, Out] = withPipeline(AggregateReplaceRoot(json))

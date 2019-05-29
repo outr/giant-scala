@@ -24,6 +24,10 @@ trait Implicits {
     MatchCondition(Json.obj("$or" -> Json.fromValues(conditions.map(_.json))))
   }
 
+  def expr(conditions: MatchCondition*): MatchCondition = {
+    MatchCondition(Json.obj("$expr" -> Json.fromValues(conditions.map(_.json))))
+  }
+
   implicit class FieldListExtras[T](f: Field[List[T]]) {
     def ===(value: T)(implicit encoder: Encoder[T]): MatchCondition = MatchCondition(Json.obj(f.fieldName -> encoder(value)))
     def >(value: T)(implicit encoder: Encoder[T]): MatchCondition = {
