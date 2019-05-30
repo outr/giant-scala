@@ -90,7 +90,9 @@ case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollec
   }
 
   def toFuture(implicit executionContext: ExecutionContext): Future[List[Out]] = {
-    createAggregate().toFuture().map(_.map(converter.fromDocument).toList)
+    createAggregate().toFuture().map(_.map(converter.fromDocument).toList).recover {
+      case t => throw AggregationException(toQuery(), t)
+    }
   }
 
   def toStream(channel: Channel[Out]): Future[Int] = {
