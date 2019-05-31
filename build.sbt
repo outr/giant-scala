@@ -2,7 +2,7 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.4.2-SNAPSHOT"
+version in ThisBuild := "1.4.2"
 scalaVersion in ThisBuild := "2.12.8"
 crossScalaVersions in ThisBuild := List("2.12.8", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
@@ -31,7 +31,7 @@ testOptions in ThisBuild += Tests.Argument("-oD")
 
 val scribeVersion = "2.7.6"
 val profigVersion = "2.3.5"
-val youiVersion = "0.11.1"
+val youiVersion = "0.11.3"
 val reactifyVersion = "3.0.3"
 val mongoScalaDriverVersion = "2.6.0"
 val macroParadiseVersion = "2.1.1"
