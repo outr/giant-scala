@@ -31,7 +31,7 @@ testOptions in ThisBuild += Tests.Argument("-oD")
 
 val scribeVersion = "2.7.8"
 val profigVersion = "2.3.6"
-val youiVersion = "0.11.11"
+val youiVersion = "0.11.12"
 val reactifyVersion = "3.0.4"
 val mongoScalaDriverVersion = "2.6.0"
 val macroParadiseVersion = "2.1.1"
