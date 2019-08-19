@@ -2,9 +2,9 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.4.3"
-scalaVersion in ThisBuild := "2.12.8"
-crossScalaVersions in ThisBuild := List("2.12.8", "2.11.12")
+version in ThisBuild := "1.4.4-SNAPSHOT"
+scalaVersion in ThisBuild := "2.13.0"
+crossScalaVersions in ThisBuild := List("2.13.0", "2.12.8", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 resolvers in ThisBuild ++= Seq(
   Resolver.sonatypeRepo("releases"),
@@ -29,13 +29,12 @@ developers in ThisBuild := List(
 
 testOptions in ThisBuild += Tests.Argument("-oD")
 
-val scribeVersion = "2.7.8"
+val scribeVersion = "2.7.9"
 val profigVersion = "2.3.6"
-val youiVersion = "0.11.12"
+val youiVersion = "0.11.23"
 val reactifyVersion = "3.0.4"
-val mongoScalaDriverVersion = "2.6.0"
-val macroParadiseVersion = "2.1.1"
-val scalatestVersion: String = "3.0.5"
+val mongoScalaDriverVersion = "2.7.0"
+val scalatestVersion: String = "3.1.0-SNAP13"
 
 lazy val root = project.in(file("."))
   .aggregate(macrosJS, macrosJVM, coreJS, coreJVM)
@@ -68,8 +67,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       "io.youi" %%% "youi-core" % youiVersion,
       "com.outr" %%% "reactify" % reactifyVersion,
       "org.scalatest" %%% "scalatest" % scalatestVersion % Test
-    ),
-    addCompilerPlugin("org.scalamacros" % "paradise" % macroParadiseVersion cross CrossVersion.full)
+    )
   )
   .jvmSettings(
     libraryDependencies ++= Seq(
