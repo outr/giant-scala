@@ -2,9 +2,9 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.4.4"
-scalaVersion in ThisBuild := "2.13.0"
-crossScalaVersions in ThisBuild := List("2.13.0", "2.12.8", "2.11.12")
+version in ThisBuild := "1.5.0-SNAPSHOT"
+scalaVersion in ThisBuild := "2.13.3"
+crossScalaVersions in ThisBuild := List("2.13.3", "2.12.12", "2.11.12")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 resolvers in ThisBuild ++= Seq(
   Resolver.sonatypeRepo("releases"),
@@ -29,12 +29,12 @@ developers in ThisBuild := List(
 
 testOptions in ThisBuild += Tests.Argument("-oD")
 
-val scribeVersion = "2.7.9"
-val profigVersion = "2.3.6"
-val youiVersion = "0.11.23"
-val reactifyVersion = "3.0.4"
+val scribeVersion = "2.7.12"
+val profigVersion = "3.0.4"
+val youiVersion = "0.13.17-SNAPSHOT"
+val reactifyVersion = "4.0.1"
 val mongoScalaDriverVersion = "2.7.0"
-val scalatestVersion: String = "3.1.0-SNAP13"
+val scalatestVersion: String = "3.2.2-M2"
 
 lazy val root = project.in(file("."))
   .aggregate(macrosJS, macrosJVM, coreJS, coreJVM)

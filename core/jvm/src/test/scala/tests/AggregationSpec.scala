@@ -4,7 +4,8 @@ import java.util.concurrent.atomic.AtomicLong
 
 import com.outr.giantscala.{Converter, DBCollection, Field, Id, Index, ModelObject, MongoDatabase}
 import com.outr.giantscala.dsl._
-import org.scalatest.{AsyncWordSpec, Matchers}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AsyncWordSpec
 import scribe.{Level, Logger}
 import scribe.format.Formatter
 

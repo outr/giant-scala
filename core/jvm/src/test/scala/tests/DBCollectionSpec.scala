@@ -5,7 +5,9 @@ import com.outr.giantscala.dsl.SortField
 import com.outr.giantscala.failure.FailureType
 import com.outr.giantscala.oplog.Delete
 import io.circe.Printer
-import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
+import org.scalatest.Assertion
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AsyncWordSpec
 import reactify.Channel
 import scribe.{Level, Logger}
 import scribe.format.Formatter
