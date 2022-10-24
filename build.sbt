@@ -27,9 +27,9 @@ developers in ThisBuild := List(
   Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
 )
 
-testOptions in ThisBuild += Tests.Argument("-oD")
+ThisBuild / testOptions += Tests.Argument("-oD")
 
-val scribeVersion = "3.10.3"
+val scribeVersion = "3.10.4"
 val profigVersion = "3.4.4"
 val reactifyVersion = "4.0.8"
 val mongoScalaDriverVersion = "4.7.2"
@@ -55,6 +55,7 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       "org.typelevel" %%% "cats-effect" % catsEffectVersion,
       "co.fs2" %%% "fs2-core" % fs2Version,
       "com.outr" %%% "scribe" % scribeVersion,
+      "com.outr" %% "scribe-slf4j" % scribeVersion,
       "org.scalatest" %%% "scalatest" % scalatestVersion % Test
     )
   )

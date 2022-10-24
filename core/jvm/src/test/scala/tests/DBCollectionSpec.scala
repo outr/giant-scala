@@ -18,20 +18,20 @@ import scala.language.implicitConversions
 
 class DBCollectionSpec extends AsyncWordSpec with Matchers {
   "DBCollection" should {
-    val inserts = ListBuffer.empty[Person]
-    val deletes = ListBuffer.empty[Delete]
+//    val inserts = ListBuffer.empty[Person]
+//    val deletes = ListBuffer.empty[Delete]
 
-    "reconfigure logging" in {
-      Logger
-        .root
-        .clearHandlers()
-        .withHandler(
-          formatter = Formatter.enhanced,
-          minimumLevel = Some(Level.Info)
-        )
-        .replace()
-      Future.successful(succeed)
-    }
+//    "reconfigure logging" in {
+//      Logger
+//        .root
+//        .clearHandlers()
+//        .withHandler(
+//          formatter = Formatter.enhanced,
+//          minimumLevel = Some(Level.Info)
+//        )
+//        .replace()
+//      Future.successful(succeed)
+//    }
     "drop the database so it's clean and ready" in {
       DBCollectionDatabase.drop().map(_ => true should be(true))
     }
@@ -47,15 +47,15 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
     "create successfully" in {
       DBCollectionDatabase.person shouldNot be(null)
     }
-    "start monitoring people" in {
-      DBCollectionDatabase.person.monitor.insert.attach { person =>
-        inserts += person
-      }
-      DBCollectionDatabase.person.monitor.delete.attach { delete =>
-        deletes += delete
-      }
-      noException should be thrownBy DBCollectionDatabase.person.monitor.start()
-    }
+//    "start monitoring people" in {
+//      DBCollectionDatabase.person.monitor.insert.attach { person =>
+//        inserts += person
+//      }
+//      DBCollectionDatabase.person.monitor.delete.attach { delete =>
+//        deletes += delete
+//      }
+//      noException should be thrownBy DBCollectionDatabase.person.monitor.start()
+//    }
 //    "validate a field value" in {
 //      val f = Field[String]("MyField")
 //      val value = f("test")
@@ -120,13 +120,13 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         }
       }
     }
-    "verify the delete was monitored" in {
-      waitFor(deletes.length should be(1)).map { _ =>
-        deletes.length should be(1)
-      }
-    }
+//    "verify the delete was monitored" in {
+//      waitFor(deletes.length should be(1)).map { _ =>
+//        deletes.length should be(1)
+//      }
+//    }
     "do a batch insert" in {
-      inserts.clear()
+//      inserts.clear()
       DBCollectionDatabase.person.batch.insert(
         Person("Person A", 1, _id = DBCollectionDatabase.person.id("personA")),
         Person("Person B", 2, _id = DBCollectionDatabase.person.id("personB"))
@@ -134,14 +134,14 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         result.getInsertedCount should be(2)
       }
     }
-    "verify the batch insert was monitored" in {
-      waitFor(inserts.length should be(2)).map { _ =>
-        val p = inserts.head
-        p.name should be("Person A")
-        p.age should be(1)
-        p._id should be(DBCollectionDatabase.person.id("personA"))
-      }
-    }
+//    "verify the batch insert was monitored" in {
+//      waitFor(inserts.length should be(2)).map { _ =>
+//        val p = inserts.head
+//        p.name should be("Person A")
+//        p.age should be(1)
+//        p._id should be(DBCollectionDatabase.person.id("personA"))
+//      }
+//    }
     "do a batch update" in {
       DBCollectionDatabase.person.batch.update(
         Person("Person A", 123, _id = DBCollectionDatabase.person.id("personA")),

@@ -2,7 +2,7 @@ package com.outr.giantscala
 
 import fabric.rw.RW
 
-case class StoredIndex(v: Int, key: Map[String, Int], name: String, ns: String) {
+case class StoredIndex(v: Int, key: Map[String, Int], name: String, ns: Option[String]) {
   lazy val fields: Set[String] = key.keys.toSet
 }
 

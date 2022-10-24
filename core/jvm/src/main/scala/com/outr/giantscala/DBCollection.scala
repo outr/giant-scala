@@ -2,7 +2,6 @@ package com.outr.giantscala
 
 import com.outr.giantscala.dsl._
 import com.outr.giantscala.failure.{DBFailure, FailureType}
-import com.outr.giantscala.oplog.CollectionMonitor
 import fabric._
 import fabric.io.JsonFormatter
 import org.mongodb.scala.{BulkWriteResult, MongoCollection, MongoException, MongoNamespace}
@@ -30,7 +29,7 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
 
   val converter: Converter[T]
 
-  lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this, collection)
+//  lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this, collection)
 
   def id(id: String): Id[T] = Id[T](id)
 
