@@ -1,30 +1,26 @@
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 name := "giant-scala"
-organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.5.0-SNAPSHOT"
-scalaVersion in ThisBuild := "2.13.9"
-crossScalaVersions in ThisBuild := List("2.13.9", "3.2.0")
-scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
-resolvers in ThisBuild ++= Seq(
-  Resolver.sonatypeRepo("releases"),
-  Resolver.sonatypeRepo("snapshots")
-)
+ThisBuild / organization := "com.outr"
+ThisBuild / version := "1.5.0-SNAPSHOT"
+ThisBuild / scalaVersion := "2.13.10"
+ThisBuild / crossScalaVersions := List("2.13.10")
+ThisBuild / scalacOptions ++= Seq("-unchecked", "-deprecation")
+ThisBuild / resolvers ++= Resolver.sonatypeOssRepos("releases") ++ Resolver.sonatypeOssRepos("snapshots")
 
-publishTo in ThisBuild := sonatypePublishTo.value
-sonatypeProfileName in ThisBuild := "com.outr"
-publishMavenStyle in ThisBuild := true
-licenses in ThisBuild := Seq("MIT" -> url("https://github.com/outr/giantscala/blob/master/LICENSE"))
-sonatypeProjectHosting in ThisBuild := Some(xerial.sbt.Sonatype.GitHubHosting("outr", "giantscala", "matt@outr.com"))
-homepage in ThisBuild := Some(url("https://github.com/outr/giantscala"))
-scmInfo in ThisBuild := Some(
+ThisBuild / publishTo := sonatypePublishTo.value
+ThisBuild / sonatypeProfileName := "com.outr"
+ThisBuild / licenses := Seq("MIT" -> url("https://github.com/outr/giantscala/blob/master/LICENSE"))
+ThisBuild / sonatypeProjectHosting := Some(xerial.sbt.Sonatype.GitHubHosting("outr", "giantscala", "matt@outr.com"))
+ThisBuild / homepage := Some(url("https://github.com/outr/giantscala"))
+ThisBuild / scmInfo := Some(
   ScmInfo(
     url("https://github.com/outr/giantscala"),
     "scm:git@github.com:outr/giantscala.git"
   )
 )
-developers in ThisBuild := List(
-  Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("http://matthicks.com"))
+ThisBuild / developers := List(
+  Developer(id="darkfrog", name="Matt Hicks", email="matt@matthicks.com", url=url("https://matthicks.com"))
 )
 
 ThisBuild / testOptions += Tests.Argument("-oD")
@@ -68,12 +64,12 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
 lazy val coreJS = core.js
 lazy val coreJVM = core.jvm
 
-lazy val plugin = project.in(file("plugin"))
-  .settings(
-    name := "giant-scala-plugin",
-    sbtPlugin := true,
-    crossSbtVersions := Vector("0.13.18", "1.2.8")
-  )
-
-lazy val backup = project.in(file("backup"))
-  .dependsOn(coreJVM)
+//lazy val plugin = project.in(file("plugin"))
+//  .settings(
+//    name := "giant-scala-plugin",
+//    sbtPlugin := true,
+//    crossSbtVersions := Vector("0.13.18", "1.7.2")
+//  )
+//
+//lazy val backup = project.in(file("backup"))
+//  .dependsOn(coreJVM)

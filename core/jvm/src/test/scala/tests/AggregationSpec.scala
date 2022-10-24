@@ -21,17 +21,6 @@ class AggregationSpec extends AsyncWordSpec with Matchers {
     val Cherry2 = Order("Cherry", 11)
     val Apple3 = Order("Apple", 8)
 
-    "reconfigure logging" in {
-      Logger
-        .root
-        .clearHandlers()
-        .withHandler(
-          formatter = Formatter.enhanced,
-          minimumLevel = Some(Level.Info)
-        )
-        .replace()
-      Future.successful(succeed)
-    }
     "drop the database so it's clean and ready" in {
       AggregationDatabase.drop().map(_ => true should be(true))
     }

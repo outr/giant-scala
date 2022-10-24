@@ -9,10 +9,6 @@ import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 import reactify.Channel
-import scribe.{Level, Logger}
-import scribe.format.Formatter
-
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
 import scala.language.implicitConversions
 
@@ -21,17 +17,6 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
 //    val inserts = ListBuffer.empty[Person]
 //    val deletes = ListBuffer.empty[Delete]
 
-//    "reconfigure logging" in {
-//      Logger
-//        .root
-//        .clearHandlers()
-//        .withHandler(
-//          formatter = Formatter.enhanced,
-//          minimumLevel = Some(Level.Info)
-//        )
-//        .replace()
-//      Future.successful(succeed)
-//    }
     "drop the database so it's clean and ready" in {
       DBCollectionDatabase.drop().map(_ => true should be(true))
     }
