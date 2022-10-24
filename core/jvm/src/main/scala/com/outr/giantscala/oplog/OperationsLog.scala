@@ -2,11 +2,12 @@ package com.outr.giantscala.oplog
 
 import com.outr.giantscala.Converter
 import com.mongodb.CursorType
+import fabric.io.JsonParser
+import fabric.rw.Asable
 import org.mongodb.scala.bson.BsonTimestamp
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters._
 import org.mongodb.scala.{MongoClient, Observer, Subscription}
-import profig.JsonUtil
 import reactify.Channel
 
 class OperationsLog(client: MongoClient) extends Observer[Document] {
@@ -72,7 +73,7 @@ class OperationsLog(client: MongoClient) extends Observer[Document] {
 
   override def onNext(result: Document): Unit = {
     documents := result
-    val op = JsonUtil.fromJsonString[Operation](result.toJson(Converter.settings))
+    val op = JsonParser(result.toJson(Converter.settings)).as[Operation]
     operations := op
   }
 

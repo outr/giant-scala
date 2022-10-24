@@ -1,10 +1,11 @@
 package tests
 
 import java.util.concurrent.atomic.AtomicLong
-
 import com.outr.giantscala.{Converter, DBCollection, Field, Id, Index, ModelObject, MongoDatabase}
 import com.outr.giantscala.dsl._
-import org.scalatest.{AsyncWordSpec, Matchers}
+import fabric.rw.RW
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AsyncWordSpec
 import scribe.{Level, Logger}
 import scribe.format.Formatter
 
@@ -107,13 +108,21 @@ class AggregationSpec extends AsyncWordSpec with Matchers {
   }
 
   case class LargestOrder(_id: String, qty: Int)
+
+  object LargestOrder {
+    implicit val rw: RW[LargestOrder] = RW.gen
+  }
 }
 
 case class Order(item: String,
                  qty: Int,
                  created: Long = AggregationDatabase.now,
                  modified: Long = AggregationDatabase.now,
-                 _id: Id[Order] = Id[Order]) extends ModelObject[Order]
+                 _id: Id[Order] = Id[Order]()) extends ModelObject[Order]
+
+object Order {
+  implicit val rw: RW[Order] = RW.gen
+}
 
 class OrderCollection extends DBCollection[Order]("order", AggregationDatabase) {
   val item: Field[String] = Field("item")
@@ -122,7 +131,7 @@ class OrderCollection extends DBCollection[Order]("order", AggregationDatabase) 
   val modified: Field[Long] = Field("modified")
   val _id: Field[Id[Order]] = Field("_id")
 
-  override val converter: Converter[Order] = Converter.auto
+  override val converter: Converter[Order] = Converter.apply
 
   override def indexes: List[Index] = List(
     qty.index.ascending,

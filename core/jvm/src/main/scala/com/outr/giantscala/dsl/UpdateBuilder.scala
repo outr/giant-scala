@@ -2,7 +2,8 @@ package com.outr.giantscala.dsl
 
 import com.mongodb.client.model.UpdateOptions
 import com.outr.giantscala.{DBCollection, Field, ModelObject}
-import io.circe.{Json, Printer}
+import fabric._
+import fabric.io.JsonFormatter
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.result.UpdateResult
@@ -22,11 +23,11 @@ case class UpdateBuilder[Type <: ModelObject[Type]](collection: DBCollection[Typ
   def set(values: Json*): UpdateBuilder[Type] = withModifications("$set", values: _*)
   def setOnInsert(values: Json*): UpdateBuilder[Type] = withModifications("$setOnInsert", values: _*)
   def unset(fields: Field[_]*): UpdateBuilder[Type] = {
-    withModifications("$unset", fields.map(f => Json.obj(f.fieldName -> Json.fromString(""))): _*)
+    withModifications("$unset", fields.map(f => obj(f.fieldName -> str(""))): _*)
   }
   def rename(tuples: (String, String)*): UpdateBuilder[Type] = {
     withModifications("$rename", tuples.map {
-      case (previous, updated) => Json.obj(previous -> Json.fromString(updated))
+      case (previous, updated) => obj(previous -> str(updated))
     }: _*)
   }
   def inc(values: Json*): UpdateBuilder[Type] = withModifications("$inc", values: _*)
@@ -34,18 +35,18 @@ case class UpdateBuilder[Type <: ModelObject[Type]](collection: DBCollection[Typ
   def max(values: Json*): UpdateBuilder[Type] = withModifications("$max", values: _*)
   def mult(values: Json*): UpdateBuilder[Type] = withModifications("$mult", values: _*)
   def withModifications(key: String, values: Json*): UpdateBuilder[Type] = {
-    val json = values.foldLeft(Json.obj())((j1, j2) => j1.deepMerge(j2))
-    val merged = modifications.getOrElse(key, Json.obj()).deepMerge(json)
+    val json = values.foldLeft[Json](obj())((j1, j2) => j1.merge(j2))
+    val merged = modifications.getOrElse(key, obj()).merge(json)
     copy(modifications = modifications + (key -> merged))
   }
   def withUpdate: UpdateBuilder[Type] = copy(upsert = false)
   def withUpsert: UpdateBuilder[Type] = copy(upsert = true)
 
   def toFuture(implicit executionContext: ExecutionContext): Future[UpdateResult] = {
-    val filter = Document(conditions.map(_.json).foldLeft(Json.obj())((j1, j2) => j1.deepMerge(j2)).pretty(Printer.spaces2))
-    val update = Document(modifications.map {
-      case (key, json) => Json.obj(key -> json)
-    }.foldLeft(Json.obj())((j1, j2) => j1.deepMerge(j2)).pretty(Printer.spaces2))
+    val filter = Document(JsonFormatter.Default(conditions.map(_.json).foldLeft[Json](obj())((j1, j2) => j1.merge(j2))))
+    val update = Document(JsonFormatter.Default(modifications.map {
+      case (key, json) => obj(key -> json)
+    }.foldLeft[Json](obj())((j1, j2) => j1.merge(j2))))
     val options = new UpdateOptions
     options.upsert(upsert)
     if (many) {

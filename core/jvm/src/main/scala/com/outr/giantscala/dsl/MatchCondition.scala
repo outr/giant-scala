@@ -1,16 +1,16 @@
 package com.outr.giantscala.dsl
 
-import io.circe.Json
+import fabric._
 
 case class MatchCondition(json: Json) {
   def or(that: MatchCondition): MatchCondition = {
-    MatchCondition(Json.obj("$or" -> Json.fromValues(List(this.json, that.json))))
+    MatchCondition(obj("$or" -> arr(this.json, that.json)))
   }
 
   def ||(that: MatchCondition): MatchCondition = or(that)
 
   def and(that: MatchCondition): MatchCondition = {
-    MatchCondition(Json.obj("$and" -> Json.fromValues(List(this.json, that.json))))
+    MatchCondition(obj("$and" -> arr(this.json, that.json)))
   }
 
   def &&(that: MatchCondition): MatchCondition = and(that)

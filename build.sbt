@@ -2,9 +2,9 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 name := "giant-scala"
 organization in ThisBuild := "com.outr"
-version in ThisBuild := "1.4.4"
-scalaVersion in ThisBuild := "2.13.0"
-crossScalaVersions in ThisBuild := List("2.13.0", "2.12.8", "2.11.12")
+version in ThisBuild := "1.5.0-SNAPSHOT"
+scalaVersion in ThisBuild := "2.13.9"
+crossScalaVersions in ThisBuild := List("2.13.9", "3.2.0")
 scalacOptions in ThisBuild ++= Seq("-unchecked", "-deprecation")
 resolvers in ThisBuild ++= Seq(
   Resolver.sonatypeRepo("releases"),
@@ -29,43 +29,32 @@ developers in ThisBuild := List(
 
 testOptions in ThisBuild += Tests.Argument("-oD")
 
-val scribeVersion = "2.7.9"
-val profigVersion = "2.3.6"
-val youiVersion = "0.11.23"
-val reactifyVersion = "3.0.4"
-val mongoScalaDriverVersion = "2.7.0"
-val scalatestVersion: String = "3.1.0-SNAP13"
+val scribeVersion = "3.10.3"
+val profigVersion = "3.4.4"
+val reactifyVersion = "4.0.8"
+val mongoScalaDriverVersion = "4.7.2"
+val catsEffectVersion: String = "3.3.14"
+val fs2Version: String = "3.3.0"
+val scalatestVersion: String = "3.2.14"
 
 lazy val root = project.in(file("."))
-  .aggregate(macrosJS, macrosJVM, coreJS, coreJVM)
+  .aggregate(coreJS, coreJVM)
   .settings(
     name := "giant-scala",
     publish := {},
     publishLocal := {}
   )
 
-lazy val macros = crossProject(JVMPlatform, JSPlatform)
-  .in(file("macros"))
-  .settings(
-    name := "giant-scala-macros",
-    libraryDependencies ++= Seq(
-      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "com.outr" %%% "profig" % profigVersion,
-    )
-  )
-
-lazy val macrosJS = macros.js
-lazy val macrosJVM = macros.jvm
-
 lazy val core = crossProject(JVMPlatform, JSPlatform)
   .in(file("core"))
-  .dependsOn(macros)
   .settings(
     name := "giant-scala",
     libraryDependencies ++= Seq(
-      "com.outr" %%% "scribe" % scribeVersion,
-      "io.youi" %%% "youi-core" % youiVersion,
+      "com.outr" %%% "profig" % profigVersion,
       "com.outr" %%% "reactify" % reactifyVersion,
+      "org.typelevel" %%% "cats-effect" % catsEffectVersion,
+      "co.fs2" %%% "fs2-core" % fs2Version,
+      "com.outr" %%% "scribe" % scribeVersion,
       "org.scalatest" %%% "scalatest" % scalatestVersion % Test
     )
   )

@@ -1,7 +1,8 @@
 package com.outr.giantscala.dsl
 
 import com.outr.giantscala.{DBCollection, ModelObject}
-import io.circe.{Json, Printer}
+import fabric._
+import fabric.io.JsonFormatter
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Collation, ReplaceOptions}
@@ -25,7 +26,7 @@ case class ReplaceOneBuilder[Type <: ModelObject[Type]](collection: DBCollection
   def collation(collation: Collation): ReplaceOneBuilder[Type] = copy(_collation = Some(collation))
 
   def toFuture(implicit executionContext: ExecutionContext): Future[UpdateResult] = {
-    val filter = Document(conditions.map(_.json).foldLeft(Json.obj())((j1, j2) => j1.deepMerge(j2)).pretty(Printer.spaces2))
+    val filter = Document(JsonFormatter.Default(conditions.map(_.json).foldLeft[Json](obj())((j1, j2) => j1.merge(j2))))
     val document = collection.converter.toDocument(replacement)
     val options = new ReplaceOptions()
     if (_upsert) options.upsert(_upsert)

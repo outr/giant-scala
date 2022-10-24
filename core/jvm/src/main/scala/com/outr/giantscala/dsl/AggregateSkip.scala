@@ -1,7 +1,7 @@
 package com.outr.giantscala.dsl
 
-import io.circe.Json
+import fabric._
 
 case class AggregateSkip(skip: Int) extends AggregateInstruction {
-  override def json: Json = Json.obj("$skip" -> Json.fromInt(skip))
+  override def json: Json = obj("$skip" -> skip)
 }

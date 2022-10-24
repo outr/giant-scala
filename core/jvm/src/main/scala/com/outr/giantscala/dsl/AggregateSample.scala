@@ -1,7 +1,7 @@
 package com.outr.giantscala.dsl
 
-import io.circe.Json
+import fabric._
 
 case class AggregateSample(size: Int) extends AggregateInstruction {
-  override def json: Json = Json.obj("$sample" -> Json.obj("size" -> Json.fromInt(size)))
+  override def json: Json = obj("$sample" -> obj("size" -> size))
 }

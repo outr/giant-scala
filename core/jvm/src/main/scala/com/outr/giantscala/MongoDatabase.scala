@@ -2,17 +2,18 @@ package com.outr.giantscala
 
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-
 import com.mongodb.{Block, MongoCredential, ServerAddress}
 
 import scala.language.experimental.macros
 import com.outr.giantscala.oplog.OperationsLog
 import com.outr.giantscala.upgrade.{CreateDatabase, DatabaseUpgrade}
+import fabric.io.{JsonFormatter, JsonParser}
+import fabric.rw.{Asable, Convertible, RW}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.connection.{ClusterSettings, ConnectionPoolSettings, ServerSettings, SocketSettings}
 import org.mongodb.scala.connection.ClusterSettings.Builder
 import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoCollection}
-import profig.{JsonUtil, Profig}
+import profig.Profig
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.Future
@@ -22,11 +23,10 @@ import org.mongodb.scala.model.ReplaceOptions
 
 import scala.concurrent._
 import scala.concurrent.duration._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class MongoDatabase(val name: String,
                     val urls: List[MongoDBServer] = MongoDatabase.urls,
-                    val maxWaitQueueSize: Int = 500,
                     val connectionPoolMinSize: Int = 0,
                     val connectionPoolMaxSize: Int = 100,
                     val connectionPoolMaxWaitQueue: Int = 500,
@@ -43,14 +43,12 @@ class MongoDatabase(val name: String,
         b.hosts(urls.map { url =>
           new ServerAddress(url.host, url.port)
         }.asJava)
-        b.maxWaitQueueSize(maxWaitQueueSize)
       }
     })
     builder.applyToConnectionPoolSettings(new Block[ConnectionPoolSettings.Builder] {
       override def apply(b: ConnectionPoolSettings.Builder): Unit = {
         b.minSize(connectionPoolMinSize)
         b.maxSize(connectionPoolMaxSize)
-        b.maxWaitQueueSize(connectionPoolMaxWaitQueue)
         b.maxWaitTime(connectionPoolMaxWaitTime.toMillis, TimeUnit.MILLISECONDS)
       }
     })
@@ -75,7 +73,7 @@ class MongoDatabase(val name: String,
   // TODO: support client.startSession().toFuture().map(_.startTransaction()) for sessions and transactions on modifications (update, insert, and delete)
 
   val buildInfo: MongoBuildInfo = Await.result(db.runCommand(Document("buildinfo" -> "")).toFuture().map { j =>
-    JsonUtil.fromJsonString[MongoBuildInfo](j.toJson())
+    JsonParser(j.toJson()).as[MongoBuildInfo]
   }, Duration.Inf)
   object version {
     lazy val string: String = buildInfo.version
@@ -93,7 +91,7 @@ class MongoDatabase(val name: String,
   /**
     * Key/Value store functionality against MongoDB
     */
-  object store {
+  object store { s =>
     private lazy val info = db.getCollection("extraInfo")
 
     object string {
@@ -101,11 +99,11 @@ class MongoDatabase(val name: String,
         info
           .find(Document("_id" -> key))
           .toFuture()
-          .map(_.map(d => JsonUtil.fromJsonString[Stored](d.toJson()).value).headOption)
+          .map(_.map(d => JsonParser(d.toJson()).as[Stored].value).headOption)
       }
 
       def set(key: String, value: String): Future[Unit] = {
-        val json = JsonUtil.toJsonString(Stored(key, value))
+        val json = JsonFormatter.Compact(Stored(key, value).json)
         info
           .replaceOne(
             Document("_id" -> key),
@@ -117,9 +115,19 @@ class MongoDatabase(val name: String,
       }
     }
 
-    def typed[T](key: String): TypedStore[T] = macro Macros.storeTyped[T]
+    def typed[T](key: String)(implicit rw: RW[T]): TypedStore[T] = new TypedStore[T] {
+      override def get: Future[Option[T]] = s.string.get(key).map(_.map(json => JsonParser(json).as[T]))
+
+      override def apply(default: => T): Future[T] = get.map(_.getOrElse(default))
+
+      override def set(value: T): Future[Unit] = s.string.set(key, JsonFormatter.Compact(value.json))
+    }
 
     case class Stored(_id: String, value: String)
+
+    object Stored {
+      implicit val rw: RW[Stored] = RW.gen
+    }
   }
 
   private lazy val versionStore = store.typed[DatabaseVersion]("databaseVersion")
@@ -138,7 +146,7 @@ class MongoDatabase(val name: String,
     ()
   }
 
-  def init(): Future[Unit] = scribe.async {
+  def init(): Future[Unit] = {
     if (_initialized.compareAndSet(false, true)) {
       versionStore(DatabaseVersion()).flatMap { version =>
         val upgrades = versions.toList.filterNot(v => version.upgrades.contains(v.label) && !v.alwaysRun)
@@ -152,7 +160,7 @@ class MongoDatabase(val name: String,
   private def upgrade(version: DatabaseVersion,
                       upgrades: List[DatabaseUpgrade],
                       newDatabase: Boolean,
-                      currentlyBlocking: Boolean = true): Future[Unit] = scribe.async {
+                      currentlyBlocking: Boolean = true): Future[Unit] = {
     val blocking = upgrades.exists(_.blockStartup)
     val future = upgrades.headOption match {
       case Some(u) => if (!newDatabase || u.applyToNew) {
@@ -185,13 +193,17 @@ class MongoDatabase(val name: String,
     }
   }
 
-  def drop(): Future[Unit] = scribe.async(db.drop().toFuture().map(_ => ()))
+  def drop(): Future[Unit] = db.drop().toFuture().map(_ => ())
 
   def dispose(): Unit = {
     client.close()
   }
 
   case class DatabaseVersion(upgrades: Set[String] = Set.empty, _id: String = "databaseVersion")
+
+  object DatabaseVersion {
+    implicit val rw: RW[DatabaseVersion] = RW.gen
+  }
 
   private[giantscala] def addCollection(collection: DBCollection[_ <: ModelObject[_]]): Unit = synchronized {
     _collections += collection

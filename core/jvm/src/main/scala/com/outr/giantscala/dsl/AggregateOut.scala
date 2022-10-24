@@ -1,7 +1,7 @@
 package com.outr.giantscala.dsl
 
-import io.circe.Json
+import fabric._
 
 case class AggregateOut(collectionName: String) extends AggregateInstruction {
-  override def json: Json = Json.obj("$out" -> Json.fromString(collectionName))
+  override def json: Json = obj("$out" -> str(collectionName))
 }
