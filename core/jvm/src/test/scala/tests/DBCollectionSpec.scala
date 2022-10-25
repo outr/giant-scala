@@ -315,8 +315,6 @@ object PersonName {
 }
 
 class PersonCollection extends DBCollection[Person]("person", DBCollectionDatabase) {
-  import scribe.Execution.global
-
   val name: Field[String] = Field("name")
   val age: Field[Int] = Field("age")
   val created: Field[Long] = Field("created")
