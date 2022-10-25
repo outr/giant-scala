@@ -1,10 +1,10 @@
 # giant-scala
 
-[![Build Status](https://travis-ci.org/outr/giantscala.svg?branch=master)](https://travis-ci.org/outr/giantscala)
+[![CI](https://github.com/outr/giant-scala/actions/workflows/ci.yml/badge.svg)](https://github.com/outr/giant-scala/actions/workflows/ci.yml)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/outr/giantscala)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.outr/giant-scala_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/com.outr/giant-scala_2.12)
-[![Latest version](https://index.scala-lang.org/outr/giantscala/giant-scala/latest.svg)](https://index.scala-lang.org/outr/giantscala)
-[![Javadocs](https://javadoc.io/badge/com.outr/giant-scala_2.12.svg)](https://javadoc.io/doc/com.outr/giant-scala_2.12)
+[![Scala version support](https://index.scala-lang.org/outr/giant-scala/giant-scala/latest.svg)](https://index.scala-lang.org/outr/giant-scala/giant-scala)
+[![javadoc](https://javadoc.io/badge2/com.outr/giant-scala_2.13/javadoc.svg)](https://javadoc.io/doc/com.outr/giant-scala_2.13)
 
 GiantScala is wrapper on top of the Scala MongoDB driver to provide higher level functionality and better type-safety.
 
@@ -15,13 +15,13 @@ For people that want to skip the explanations and see it action, this is the pla
 ### Dependency Configuration
 
 ```scala
-libraryDependencies += "com.outr" %% "giant-scala" % "1.2.0"
+libraryDependencies += "com.outr" %% "giant-scala" % "1.5.0"
 ```
 
 If you are developing a cross-project with Scala.js support:
 
 ```scala
-libraryDependencies += "com.outr" %%% "giant-scala" % "1.2.0"
+libraryDependencies += "com.outr" %%% "giant-scala" % "1.5.0"
 ```
 
 Note: while MongoDB obviously doesn't work in the browser, the purpose of the Scala.js functionality is to allow shared
