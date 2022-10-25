@@ -1,14 +1,16 @@
 package com.outr.giantscala.oplog
 
+import cats.effect.IO
 import com.mongodb.client.model.changestream.OperationType
 import com.outr.giantscala.{DBCollection, ModelObject}
-import io.circe.Json
+import fabric._
+import fabric.io.{JsonFormatter, JsonParser}
+import fabric.rw.Asable
 import org.mongodb.scala
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.BsonTimestamp
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.changestream.{ChangeStreamDocument, FullDocument}
-import profig.JsonUtil
 import reactify.reaction.{Reaction, ReactionStatus}
 import reactify._
 
@@ -27,7 +29,7 @@ class CollectionMonitor[T <: ModelObject[T]](collection: DBCollection[T],
     * Only receives OpType.Insert records
     */
   lazy val insert: Channel[T] = operation.collect {
-    case op if op.`type` == OpType.Insert => collection.converter.fromDocument(Document(op.o.spaces2))
+    case op if op.`type` == OpType.Insert => collection.converter.fromDocument(Document(JsonFormatter.Default(op.o)))
   }
 
   /**
@@ -41,7 +43,7 @@ class CollectionMonitor[T <: ModelObject[T]](collection: DBCollection[T],
     operation.attach { op =>
       if (op.`type` == OpType.Update) {
         try {
-          c := collection.converter.fromDocument(Document(op.o.spaces2))
+          c := collection.converter.fromDocument(Document(JsonFormatter.Default(op.o)))
         } catch {
           case _: Throwable => // Ignore records that can't be converted (covers situations like $set)
         }
@@ -54,7 +56,7 @@ class CollectionMonitor[T <: ModelObject[T]](collection: DBCollection[T],
     * Only receives OpType.Delete _ids
     */
   lazy val delete: Channel[Delete] = operation.collect {
-    case op if op.`type` == OpType.Delete => JsonUtil.fromJsonString[Delete](op.o.spaces2)
+    case op if op.`type` == OpType.Delete => op.o.as[Delete]
   }
 
   private lazy val watcher: scala.Observer[ChangeStreamDocument[Document]] = new scala.Observer[ChangeStreamDocument[Document]] {
@@ -78,12 +80,8 @@ class CollectionMonitor[T <: ModelObject[T]](collection: DBCollection[T],
         ns = Option(result.getNamespace).map(_.getFullName).getOrElse(""),
         wall = result.getClusterTime.getValue,
         o = Option(result.getFullDocument)
-          .map(d => io.circe.parser.parse(d.toJson()))
-          .flatMap {
-            case Left(_) => None
-            case Right(json) => Some(json)
-          }
-          .getOrElse(Json.obj("_id" -> Json.fromString(documentKey)))
+          .map(d => JsonParser(d.toJson()))
+          .getOrElse(obj("_id" -> str(documentKey)))
       )
       operation := op
 
@@ -107,11 +105,13 @@ class CollectionMonitor[T <: ModelObject[T]](collection: DBCollection[T],
     * Starts the oplog monitor on the database if it's not already running and begins monitoring for operations relating
     * to this collection. This must be called before any operations can be received by #insert, #update, or #delete.
     */
-  def start(): Unit = if (collection.db.useOplog) {
-    collection.db.oplog.startIfNotRunning()
-    collection.db.oplog.operations.reactions += this
-  } else {
-    subscribe()
+  def start(): IO[Unit] = collection.db.buildInfo.map { buildInfo =>
+    if (buildInfo.useOplog) {
+      collection.db.oplog.startIfNotRunning()
+      collection.db.oplog.operations.reactions += this
+    } else {
+      subscribe()
+    }
   }
 
   private def subscribe(startAt: Option[BsonTimestamp] = None, awaitTime: Duration = 10.hours): Unit = {
@@ -125,11 +125,7 @@ class CollectionMonitor[T <: ModelObject[T]](collection: DBCollection[T],
   /**
     * Stops monitoring the oplog for operations related to this collection. Does not stop the oplog from running.
     */
-  def stop(): Unit = if (collection.db.version.major >= 4) {
-    // TODO: support stopping
-  } else {
-    collection.db.oplog.operations.reactions -= this
-  }
+  def stop(): Unit = collection.db.oplog.operations.reactions -= this
 
   override def apply(op: Operation, previous: Option[Operation]): ReactionStatus = {
     if (op.ns == ns) {

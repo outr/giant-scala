@@ -1,6 +1,6 @@
 package com.outr.giantscala.dsl
 
-import io.circe.Json
+import fabric.Json
 
 trait AggregateInstruction extends Implicits {
   def json: Json

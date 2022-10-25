@@ -1,9 +1,11 @@
 package com.outr.giantscala
 
+import cats.effect.IO
+import cats.implicits.toTraverseOps
 import com.outr.giantscala.dsl._
 import com.outr.giantscala.failure.{DBFailure, FailureType}
-import com.outr.giantscala.oplog.CollectionMonitor
-import io.circe.{Json, Printer}
+import fabric._
+import fabric.io.JsonFormatter
 import org.mongodb.scala.{BulkWriteResult, MongoCollection, MongoException, MongoNamespace}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters.{equal, in}
@@ -11,36 +13,37 @@ import org.mongodb.scala.model.RenameCollectionOptions
 import org.mongodb.scala.result.DeleteResult
 
 import scala.language.experimental.macros
-import scala.concurrent.Future
-import scribe.Execution.global
-
 import scala.language.implicitConversions
 
-abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val db: MongoDatabase) extends Implicits {
+abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val db: MongoDatabase) extends Implicits with StreamSupport {
   db.addCollection(this)
 
-  implicit class EnhancedFuture[Result](future: Future[Result]) {
-    def either: Future[Either[DBFailure, Result]] = future.map[Either[DBFailure, Result]](Right.apply).recover {
-      case exc: MongoException => Left(DBFailure(scribe.Position.fix(exc)))
-    }
+  implicit class EnhancedIO[Result](io: IO[Result]) {
+    def either: IO[Either[DBFailure, Result]] = io.map[Either[DBFailure, Result]](Right.apply).redeem(
+      recover = (t: Throwable) => t match {
+        case exc: MongoException => Left(DBFailure(exc))
+        case _ => throw t
+      },
+      map = identity
+    )
   }
 
   private lazy val collection: MongoCollection[Document] = db.getCollection(collectionName)
 
   val converter: Converter[T]
 
-  lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this, collection)
+//  lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this, collection)
 
   def id(id: String): Id[T] = Id[T](id)
 
   def indexes: List[Index]
 
-  def storedIndexes: Future[List[StoredIndex]] = collection.listIndexes().toFuture().map { documents =>
-    documents.toList.map(StoredIndex.converter.fromDocument)
+  def storedIndexes: IO[List[StoredIndex]] = collection.listIndexes().toList.map { documents =>
+    documents.map(StoredIndex.converter.fromDocument)
   }
 
-  def create(): Future[Unit] = for {
-    _ <- Future.sequence(indexes.map(_.create(collection)))
+  def create(): IO[Unit] = for {
+    _ <- indexes.map(_.create(collection)).sequence
     stored <- storedIndexes
     delete = stored.collect {
       case storedIndex if !indexes.exists(_.fields.map(_.fieldName).toSet == storedIndex.fields) && storedIndex.name != "_id_" => {
@@ -48,7 +51,7 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
         storedIndex
       }
     }
-    _ <- Future.sequence(delete.map(i => collection.dropIndex(i.name).toFuture()))
+    _ <- delete.map(i => collection.dropIndex(i.name).toList).sequence
   } yield {
     ()
   }
@@ -60,36 +63,36 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
   lazy val updateMany: UpdateBuilder[T] = UpdateBuilder[T](this, collection, many = true)
   def replaceOne(replacement: T): ReplaceOneBuilder[T] = ReplaceOneBuilder[T](this, collection, replacement)
 
-  def deleteOne(conditions: MatchCondition*): Future[Either[DBFailure, DeleteResult]] = {
-    val json = conditions.foldLeft(Json.obj())((json, condition) => json.deepMerge(condition.json))
-    collection.deleteOne(Document(json.pretty(Printer.spaces2))).toFuture().either
+  def deleteOne(conditions: MatchCondition*): IO[Either[DBFailure, DeleteResult]] = {
+    val json = conditions.foldLeft[Json](obj())((json, condition) => json.merge(condition.json))
+    collection.deleteOne(Document(JsonFormatter.Default(json))).one.either
   }
 
-  def deleteMany(conditions: MatchCondition*): Future[Either[DBFailure, DeleteResult]] = {
-    val json = conditions.foldLeft(Json.obj())((json, condition) => json.deepMerge(condition.json))
-    collection.deleteMany(Document(json.pretty(Printer.spaces2))).toFuture().either
+  def deleteMany(conditions: MatchCondition*): IO[Either[DBFailure, DeleteResult]] = {
+    val json = conditions.foldLeft[Json](obj())((json, condition) => json.merge(condition.json))
+    collection.deleteMany(Document(JsonFormatter.Default(json))).one.either
   }
 
-  def insert(values: Seq[T]): Future[Either[DBFailure, Seq[T]]] = scribe.async {
+  def insert(values: Seq[T]): IO[Either[DBFailure, Seq[T]]] = {
     if (values.nonEmpty) {
       val docs = values.map(converter.toDocument)
-      collection.insertMany(docs).toFuture().map(_ => values).either
+      collection.insertMany(docs).first.map(_ => values).either
     } else {
-      Future.successful(Right(Nil))
+      IO.pure(Right(Nil))
     }
   }
 
-  def insert(value: T): Future[Either[DBFailure, T]] = scribe.async {
+  def insert(value: T): IO[Either[DBFailure, T]] = {
     val document = converter.toDocument(value)
-    collection.insertOne(document).toFuture().map(_ => value).either
+    collection.insertOne(document).first.map(_ => value).either
   }
 
-  def update(value: T): Future[Either[DBFailure, T]] = scribe.async {
+  def update(value: T): IO[Either[DBFailure, T]] = {
     val doc = converter.toDocument(value)
-    collection.replaceOne(equal("_id", value._id.value), doc).toFuture().map(_ => value).either
+    collection.replaceOne(equal("_id", value._id.value), doc).first.map(_ => value).either
   }
 
-  def update(values: Seq[T]): Future[BulkWriteResult] = scribe.async {
+  def update(values: Seq[T]): IO[BulkWriteResult] = {
     var b = batch
     values.foreach { v =>
       b = b.update(v)
@@ -97,11 +100,11 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
     b.execute()
   }
 
-  def upsert(value: T): Future[Either[DBFailure, T]] = scribe.async {
-    replaceOne(value).`match`(Field[Id[T]]("_id") === value._id).upsert.toFuture.map(_ => value).either
+  def upsert(value: T): IO[Either[DBFailure, T]] = {
+    replaceOne(value).`match`(Field[Id[T]]("_id") === value._id).upsert.toIO.map(_ => value).either
   }
 
-  def upsert(values: Seq[T]): Future[BulkWriteResult] = scribe.async {
+  def upsert(values: Seq[T]): IO[BulkWriteResult] = {
     var b = batch
     values.foreach { v =>
       b = b.upsert(v)
@@ -109,69 +112,69 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
     b.execute()
   }
 
-  def byIds(ids: Seq[Id[T]]): Future[List[T]] = scribe.async {
-    collection.find(in("_id", ids.map(_.value): _*)).toFuture().map { documents =>
-      documents.map(converter.fromDocument).toList
+  def byIds(ids: Seq[Id[T]]): IO[List[T]] = {
+    collection.find(in("_id", ids.map(_.value): _*)).toList.map { documents =>
+      documents.map(converter.fromDocument)
     }
   }
 
-  def all(limit: Int = 1000): Future[List[T]] = scribe.async {
-    collection.find().limit(limit).toFuture().map { documents =>
-      documents.map(converter.fromDocument).toList
+  def all(limit: Int = 1000): IO[List[T]] = {
+    collection.find().limit(limit).toList.map { documents =>
+      documents.map(converter.fromDocument)
     }
   }
 
-  def sample(size: Int, retries: Int = 2): Future[Either[DBFailure, List[T]]] = scribe.async {
-    aggregate.sample(size).toFuture.either.flatMap {
+  def sample(size: Int, retries: Int = 2): IO[Either[DBFailure, List[T]]] = {
+    aggregate.sample(size).toList.either.flatMap {
       case Left(f) if f.`type` == FailureType.SampleNoNonDuplicate && retries > 0 => sample(size, retries - 1)
-      case result => Future.successful(result)
+      case result => IO.pure(result)
     }
   }
 
   def largeSample(size: Int,
                   groupSize: Int,
                   retries: Int = 2,
-                  samples: Set[T] = Set.empty): Future[Either[DBFailure, Set[T]]] = scribe.async {
+                  samples: Set[T] = Set.empty): IO[Either[DBFailure, Set[T]]] = {
     val querySize = math.min(size - samples.size, groupSize)
     if (querySize > 0) {
       sample(querySize, retries).flatMap {
-        case Left(dbf) => Future.successful(Left(dbf))
+        case Left(dbf) => IO.pure(Left(dbf))
         case Right(values) => {
           val merged = samples ++ values
           if (merged == samples) {
             scribe.warn(s"Reached maximum samples: ${merged.size}, wanted $querySize more but could not find more samples")
-            Future.successful(Right(merged))
+            IO.pure(Right(merged))
           } else {
             largeSample(size, groupSize, retries, merged)
           }
         }
       }
     } else {
-      Future.successful(Right(samples))
+      IO.pure(Right(samples))
     }
   }
 
-  def get(id: Id[T]): Future[Option[T]] = scribe.async {
-    collection.find(Document("_id" -> id.value)).toFuture().map { documents =>
+  def get(id: Id[T]): IO[Option[T]] = {
+    collection.find(Document("_id" -> id.value)).toList.map { documents =>
       documents.headOption.map(converter.fromDocument)
     }
   }
 
-  def count(): Future[Long] = scribe.async(collection.estimatedDocumentCount().toFuture())
+  def count(): IO[Long] = collection.estimatedDocumentCount().one
 
-  def rename(newName: String, dropTarget: Boolean = false): Future[Either[DBFailure, Unit]] = {
+  def rename(newName: String, dropTarget: Boolean = false): IO[Either[DBFailure, Unit]] = {
     val options = new RenameCollectionOptions
     if (dropTarget) options.dropTarget(true)
-    collection.renameCollection(MongoNamespace(newName), options).toFuture().map(_ => ()).either
+    collection.renameCollection(MongoNamespace(newName), options).first.map(_ => ()).either
   }
 
-  def delete(id: Id[T]): Future[Either[DBFailure, Unit]] = scribe.async {
-    collection.deleteOne(Document("_id" -> id.value)).toFuture().map(_ => ()).either
+  def delete(id: Id[T]): IO[Either[DBFailure, Unit]] = {
+    collection.deleteOne(Document("_id" -> id.value)).first.map(_ => ()).either
   }
 
-  def delete(ids: Seq[Id[T]]): Future[Either[DBFailure, Int]] = scribe.async {
-    collection.deleteMany(in("_id", ids.map(_.value): _*)).toFuture().map(_ => ids.length).either
+  def delete(ids: Seq[Id[T]]): IO[Either[DBFailure, Int]] = {
+    collection.deleteMany(in("_id", ids.map(_.value): _*)).first.map(_ => ids.length).either
   }
 
-  def drop(): Future[Unit] = scribe.async(collection.drop().toFuture().map(_ => ()))
+  def drop(): IO[Unit] = collection.drop().first.map(_ => ())
 }

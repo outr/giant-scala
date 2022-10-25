@@ -1,35 +1,25 @@
 package tests
 
+import cats.effect.IO
+import cats.effect.testing.scalatest.AsyncIOSpec
 import com.outr.giantscala._
 import com.outr.giantscala.dsl.SortField
 import com.outr.giantscala.failure.FailureType
 import com.outr.giantscala.oplog.Delete
-import io.circe.Printer
-import org.scalatest.{Assertion, AsyncWordSpec, Matchers}
+import fabric.rw.RW
+import org.scalatest.Assertion
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AsyncWordSpec
 import reactify.Channel
-import scribe.{Level, Logger}
-import scribe.format.Formatter
 
-import scala.collection.mutable.ListBuffer
-import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
 import scala.language.implicitConversions
 
-class DBCollectionSpec extends AsyncWordSpec with Matchers {
+class DBCollectionSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
   "DBCollection" should {
-    var inserts = ListBuffer.empty[Person]
-    var deletes = ListBuffer.empty[Delete]
+//    val inserts = ListBuffer.empty[Person]
+//    val deletes = ListBuffer.empty[Delete]
 
-    "reconfigure logging" in {
-      Logger
-        .root
-        .clearHandlers()
-        .withHandler(
-          formatter = Formatter.enhanced,
-          minimumLevel = Some(Level.Info)
-        )
-        .replace()
-      Future.successful(succeed)
-    }
     "drop the database so it's clean and ready" in {
       DBCollectionDatabase.drop().map(_ => true should be(true))
     }
@@ -39,26 +29,27 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       }
     }
     "verify the version" in {
-      val version = DBCollectionDatabase.version.major
-      version should be >= 3
+      DBCollectionDatabase.buildInfo.map { buildInfo =>
+        buildInfo.major should be >= 3
+      }
     }
     "create successfully" in {
       DBCollectionDatabase.person shouldNot be(null)
     }
-    "start monitoring people" in {
-      DBCollectionDatabase.person.monitor.insert.attach { person =>
-        inserts += person
-      }
-      DBCollectionDatabase.person.monitor.delete.attach { delete =>
-        deletes += delete
-      }
-      noException should be thrownBy DBCollectionDatabase.person.monitor.start()
-    }
-    "validate a field value" in {
-      val f = Field[String]("MyField")
-      val value = f("test").pretty(Printer.noSpaces)
-      value should be("""{"MyField":"test"}""")
-    }
+//    "start monitoring people" in {
+//      DBCollectionDatabase.person.monitor.insert.attach { person =>
+//        inserts += person
+//      }
+//      DBCollectionDatabase.person.monitor.delete.attach { delete =>
+//        deletes += delete
+//      }
+//      noException should be thrownBy DBCollectionDatabase.person.monitor.start()
+//    }
+//    "validate a field value" in {
+//      val f = Field[String]("MyField")
+//      val value = f("test")
+//      value should be("""{"MyField":"test"}""")
+//    }
     "insert a person" in {
       DBCollectionDatabase.person.insert(Person(
         name = "John Doe",
@@ -66,7 +57,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         _id = DBCollectionDatabase.person.id("john.doe")
       )).map { result =>
         result.isRight should be(true)
-        val p = result.right.get
+        val p = result.toOption.get
         p.name should be("John Doe")
         p.age should be(30)
         p._id should be(DBCollectionDatabase.person.id("john.doe"))
@@ -106,7 +97,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         _id = DBCollectionDatabase.person.id("john.doe2")
       )).map { result =>
         result.isLeft should be(true)
-        val failure = result.left.get
+        val failure = result.swap.toOption.get
         failure.`type` should be(FailureType.DuplicateKey)
       }
     }
@@ -118,13 +109,13 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         }
       }
     }
-    "verify the delete was monitored" in {
-      waitFor(deletes.length should be(1)).map { _ =>
-        deletes.length should be(1)
-      }
-    }
+//    "verify the delete was monitored" in {
+//      waitFor(deletes.length should be(1)).map { _ =>
+//        deletes.length should be(1)
+//      }
+//    }
     "do a batch insert" in {
-      inserts.clear()
+//      inserts.clear()
       DBCollectionDatabase.person.batch.insert(
         Person("Person A", 1, _id = DBCollectionDatabase.person.id("personA")),
         Person("Person B", 2, _id = DBCollectionDatabase.person.id("personB"))
@@ -132,14 +123,14 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         result.getInsertedCount should be(2)
       }
     }
-    "verify the batch insert was monitored" in {
-      waitFor(inserts.length should be(2)).map { _ =>
-        val p = inserts.head
-        p.name should be("Person A")
-        p.age should be(1)
-        p._id should be(DBCollectionDatabase.person.id("personA"))
-      }
-    }
+//    "verify the batch insert was monitored" in {
+//      waitFor(inserts.length should be(2)).map { _ =>
+//        val p = inserts.head
+//        p.name should be("Person A")
+//        p.age should be(1)
+//        p._id should be(DBCollectionDatabase.person.id("personA"))
+//      }
+//    }
     "do a batch update" in {
       DBCollectionDatabase.person.batch.update(
         Person("Person A", 123, _id = DBCollectionDatabase.person.id("personA")),
@@ -161,29 +152,23 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       import DBCollectionDatabase.person._
       aggregate
         .`match`(name === "Person A")
-        .toFuture
+        .toList
         .map { people =>
           people.map(_.name) should be(List("Person A"))
         }
     }
     "query Person A back in an aggregate DSL query using toStream" in {
       import DBCollectionDatabase.person._
-      var people = List.empty[Person]
-      val channel = Channel[Person]
-      channel.attach { person =>
-        people = person :: people
-      }
       aggregate
         .sort(SortField.Descending(name))
-        .toStream(channel)
-        .map { received =>
-          received should be(2)
-          people.map(_.name) should be(List("Person A", "Person B"))
+        .toList
+        .map { people =>
+          people.map(_.name).toSet should be(Set("Person A", "Person B"))
         }
     }
     "aggregate count" in {
       import DBCollectionDatabase.person._
-      aggregate.count().toFuture.map { results =>
+      aggregate.count().toList.map { results =>
         results should be(List(2))
       }
     }
@@ -191,7 +176,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       import DBCollectionDatabase.person._
       aggregate
         .sort(SortField.Ascending(name))
-        .toFuture
+        .toList
         .map { people =>
           val names = people.map(_.name)
           names should be(List("Person A", "Person B"))
@@ -201,7 +186,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       import DBCollectionDatabase.person._
       aggregate
         .sort(SortField.Descending(name))
-        .toFuture
+        .toList
         .map { people =>
           val names = people.map(_.name)
           names should be(List("Person B", "Person A"))
@@ -212,7 +197,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       aggregate
         .sort(SortField.Ascending(name))
         .skip(1)
-        .toFuture
+        .toList
         .map { people =>
           val names = people.map(_.name)
           names should be(List("Person B"))
@@ -223,7 +208,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
       aggregate
         .sort(SortField.Ascending(name))
         .limit(1)
-        .toFuture
+        .toList
         .map { people =>
           val names = people.map(_.name)
           names should be(List("Person A"))
@@ -235,7 +220,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
         .project(name.include, _id.exclude)
         .`match`(name === "Person A")
         .as[PersonName]
-        .toFuture.map { people =>
+        .toList.map { people =>
           people.map(_.name) should be(List("Person A"))
         }
     }
@@ -266,7 +251,7 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
     }
     "verify aggregate $addFields" in {
       import DBCollectionDatabase.person._
-      val query = aggregate.addFields(Field("person").arrayElemAt("$people", 0)).toQuery(includeSpaces = false)
+      val query = aggregate.addFields(Field[Person]("person").arrayElemAt("$people", 0)).toQuery(includeSpaces = false)
       query should be("""db.person.aggregate([{"$addFields":{"person":{"$arrayElemAt":["$people",0]}}}])""")
     }
     "verify $objectToArray converts to proper query" in {
@@ -295,17 +280,17 @@ class DBCollectionSpec extends AsyncWordSpec with Matchers {
 
   def waitFor(condition: => Assertion,
               time: Long = 15000L,
-              startTime: Long = System.currentTimeMillis()): Future[Assertion] = {
+              startTime: Long = System.currentTimeMillis()): IO[Assertion] = {
     try {
       val result: Assertion = condition
-      Future.successful(result)
+      IO.pure(result)
     } catch {
       case t: Throwable => if (System.currentTimeMillis() - startTime > time) {
-        Future.failed(t)
+        IO {
+          throw t
+        }
       } else {
-        Future {
-          Thread.sleep(10L)
-        }.flatMap { _ =>
+        IO.sleep(10.millis).flatMap { _ =>
           waitFor(condition, time, startTime)
         }
       }
@@ -319,28 +304,34 @@ case class Person(name: String,
                   modified: Long = System.currentTimeMillis(),
                   _id: Id[Person]) extends ModelObject[Person]
 
+object Person {
+  implicit val rw: RW[Person] = RW.gen
+}
+
 case class PersonName(name: String)
 
-class PersonCollection extends DBCollection[Person]("person", DBCollectionDatabase) {
-  import scribe.Execution.global
+object PersonName {
+  implicit val rw: RW[PersonName] = RW.gen
+}
 
+class PersonCollection extends DBCollection[Person]("person", DBCollectionDatabase) {
   val name: Field[String] = Field("name")
   val age: Field[Int] = Field("age")
   val created: Field[Long] = Field("created")
   val modified: Field[Long] = Field("modified")
   val _id: Field[Id[Person]] = Field("_id")
 
-  override val converter: Converter[Person] = Converter.auto[Person]
+  override val converter: Converter[Person] = Converter[Person]
 
   override def indexes: List[Index] = List(
     name.index.ascending.unique
   )
 
-  def byName(name: String): Future[List[Person]] = {
-    aggregate.`match`(this.name === name).toFuture
+  def byName(name: String): IO[List[Person]] = {
+    aggregate.`match`(this.name === name).toList
   }
 }
 
-object DBCollectionDatabase extends MongoDatabase(name = "giant-scala-test", maxWaitQueueSize = 100) {
+object DBCollectionDatabase extends MongoDatabase(name = "giant-scala-test") {
   val person: PersonCollection = new PersonCollection
 }

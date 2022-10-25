@@ -1,5 +1,6 @@
 package com.outr.giantscala
 
+import cats.effect.IO
 import com.mongodb.client.model.{CollationStrength, IndexOptions}
 import com.outr.giantscala.Index._
 import org.mongodb.scala.{MongoCollection, MongoCommandException}
@@ -7,13 +8,10 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions
 import org.mongodb.scala.model.Collation
 
-import scala.concurrent.Future
-import scribe.Execution.global
-
 import scala.concurrent.duration.TimeUnit
 
-case class Index private(`type`: IndexType, fields: List[Field[_]], properties: IndexProperties = IndexProperties()) {
-  private[giantscala] def create(collection: MongoCollection[Document]): Future[Unit] = {
+case class Index private(`type`: IndexType, fields: List[Field[_]], properties: IndexProperties = IndexProperties()) extends StreamSupport {
+  private[giantscala] def create(collection: MongoCollection[Document]): IO[Unit] = {
     assert(fields.nonEmpty, "An index must contain at least one field!")
 
     val ndx = toBSON(this)
@@ -24,17 +22,18 @@ case class Index private(`type`: IndexType, fields: List[Field[_]], properties: 
     properties.collation.foreach(options.collation)
     properties.sparse.foreach(options.sparse)
 
-    collection.createIndex(ndx, options).toFuture().map(_ => ()).recoverWith {
-      case exc: MongoCommandException if exc.getErrorCode == 85 => {      // Index Options Conflict, delete and re-create
+    collection.createIndex(ndx, options).toList.map(_ => ()).attempt.flatMap {
+      case Left(exc: MongoCommandException) if exc.getErrorCode == 85 =>      // Index Options Conflict, delete and re-create
         val msg = exc.getErrorMessage
         val indexName = msg match {
           case NameRegex(n) => n
         }
         scribe.warn(s"Index options conflict for ${collection.namespace.getFullName}.$indexName. Deleting and re-creating index...")
-        collection.dropIndex(indexName).toFuture().flatMap { _ =>
+        collection.dropIndex(indexName).toList.flatMap { _ =>
           create(collection)
         }
-      }
+      case Left(t) => throw t
+      case Right(_) => IO.unit
     }
   }
 

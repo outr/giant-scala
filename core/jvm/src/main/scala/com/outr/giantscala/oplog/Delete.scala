@@ -1,3 +1,9 @@
 package com.outr.giantscala.oplog
 
-class Delete(val _id: String) extends AnyVal
+import fabric.rw.RW
+
+case class Delete(_id: String) extends AnyVal
+
+object Delete {
+  implicit val rw: RW[Delete] = RW.gen
+}

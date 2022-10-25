@@ -1,7 +1,7 @@
 package com.outr.giantscala.dsl
 
-import io.circe.Json
+import fabric._
 
 case class AggregateCount(fieldName: String) extends AggregateInstruction {
-  override def json: Json = Json.obj("$count" -> Json.fromString(fieldName))
+  override def json: Json = obj("$count" -> str(fieldName))
 }

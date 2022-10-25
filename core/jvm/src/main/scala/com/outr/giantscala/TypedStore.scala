@@ -1,9 +1,9 @@
 package com.outr.giantscala
 
-import scala.concurrent.Future
+import cats.effect.IO
 
 trait TypedStore[T] {
-  def get: Future[Option[T]]
-  def apply(default: => T): Future[T]
-  def set(value: T): Future[Unit]
+  def get: IO[Option[T]]
+  def apply(default: => T): IO[T]
+  def set(value: T): IO[Unit]
 }

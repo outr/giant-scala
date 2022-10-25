@@ -1,7 +1,7 @@
 package com.outr.giantscala.dsl
 
 import com.outr.giantscala.{DBCollection, Field, ModelObject}
-import io.circe.Json
+import fabric._
 
 case class AggregateLookup[Other <: ModelObject[Other], T](from: DBCollection[Other],
                                                            localField: Option[Field[T]],
@@ -15,21 +15,21 @@ case class AggregateLookup[Other <: ModelObject[Other], T](from: DBCollection[Ot
 
   override def json: Json = {
     val entries = List(
-      Some("from" -> Json.fromString(from.collectionName)),
-      localField.map(f => "localField" -> Json.fromString(f.fieldName)),
-      foreignField.map(f => "foreignField" -> Json.fromString(f.fieldName)),
+      Some("from" -> str(from.collectionName)),
+      localField.map(f => "localField" -> str(f.fieldName)),
+      foreignField.map(f => "foreignField" -> str(f.fieldName)),
       if (let.nonEmpty) {
         Some("let" -> let.json)
       } else {
         None
       },
       if (pipeline.nonEmpty) {
-        Some("pipeline" -> Json.arr(pipeline.map(_.json): _*))
+        Some("pipeline" -> arr(pipeline.map(_.json): _*))
       } else {
         None
       },
-      Some("as" -> Json.fromString(as))
+      Some("as" -> str(as))
     ).flatten
-    Json.obj("$lookup" -> Json.obj(entries: _*))
+    obj("$lookup" -> obj(entries: _*))
   }
 }

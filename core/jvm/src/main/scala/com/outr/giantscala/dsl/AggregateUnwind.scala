@@ -1,7 +1,7 @@
 package com.outr.giantscala.dsl
 
-import io.circe.Json
+import fabric._
 
 case class AggregateUnwind(path: String) extends AggregateInstruction {
-  override def json: Json = Json.obj("$unwind" -> Json.fromString(path))
+  override def json: Json = obj("$unwind" -> str(path))
 }

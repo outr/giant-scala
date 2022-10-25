@@ -1,17 +1,21 @@
 package com.outr.giantscala.dsl
 
-import java.util.concurrent.atomic.AtomicInteger
+import cats.effect.IO
 
+import java.util.concurrent.atomic.AtomicInteger
 import com.outr.giantscala._
-import io.circe.{Json, Printer}
+import fabric._
+import fabric.io.JsonFormatter
+import fabric.rw.RW
 import org.mongodb.scala.{AggregateObservable, MongoCollection, Observer}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.Collation
 import reactify.Channel
+import fs2.interop.reactivestreams._
+import org.reactivestreams.Publisher
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
 
 case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollection[Type],
@@ -24,7 +28,10 @@ case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollec
                                                             _bypassDocumentValidation: Boolean = false,
                                                             _collation: Option[Collation] = None,
                                                             _comment: Option[String] = None,
-                                                            _hint: Option[Bson] = None) {
+                                                            _hint: Option[Bson] = None) extends Streamable[Document, Out] {
+  override protected def toPublisher: Publisher[Document] = createAggregate()
+  override protected def convert(t: Document): Out = converter.fromDocument(t)
+
   def withPipeline(instructions: AggregateInstruction*): AggregateBuilder[Type, Out] = {
     copy(pipeline = pipeline ::: instructions.toList)
   }
@@ -49,7 +56,7 @@ case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollec
                                             (f: AggregateBuilder[Other, Other] => AggregateBuilder[Other, Other]): AggregateBuilder[Type, Out] = {
     withPipeline(AggregateLookup(from, None, None, as, let, Nil).pipeline(f))
   }
-  def replaceRoot[T](field: Field[T]): AggregateBuilder[Type, T] = macro Macros.aggregateReplaceRoot[T]
+  def replaceRoot[T: RW](field: Field[T]): AggregateBuilder[Type, T] = as[T].replaceRoot(str(field.fieldName))
   def replaceRoot(json: Json): AggregateBuilder[Type, Out] = withPipeline(AggregateReplaceRoot(json))
   def replaceRoot(field: ProjectField): AggregateBuilder[Type, Out] = replaceRoot(field.json)
   def addFields(fields: ProjectField*): AggregateBuilder[Type, Out] = withPipeline(AggregateAddFields(fields.toList))
@@ -66,10 +73,10 @@ case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollec
   }
 
   def as[T](converter: Converter[T]): AggregateBuilder[Type, T] = copy(converter = converter)
-  def as[T]: AggregateBuilder[Type, T] = macro Macros.aggregateAs[T]
+  def as[T](implicit rw: RW[T]): AggregateBuilder[Type, T] = copy[Type, T](converter = Converter[T])
 
   def json: List[Json] = pipeline.map(_.json)
-  def jsonStrings: List[String] = json.map(_.pretty(Printer.spaces2))
+  def jsonStrings: List[String] = json.map(JsonFormatter.Default.apply)
   def documents: List[Document] = jsonStrings.map(Document.apply)
 
   def allowDiskUse: AggregateBuilder[Type, Out] = copy(_allowDiskUse = true)
@@ -82,33 +89,11 @@ case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollec
 
   def toQuery(includeSpaces: Boolean = true): String = {
     val printer = if (includeSpaces) {
-      Printer.spaces2
+      JsonFormatter.Default
     } else {
-      Printer.noSpaces
+      JsonFormatter.Compact
     }
-    s"db.${collection.collectionName}.aggregate(${Json.arr(json: _*).pretty(printer)})"
-  }
-
-  def toFuture(implicit executionContext: ExecutionContext): Future[List[Out]] = {
-    createAggregate().toFuture().map(_.map(converter.fromDocument).toList).recover {
-      case t => throw AggregationException(toQuery(), t)
-    }
-  }
-
-  def toStream(channel: Channel[Out]): Future[Int] = {
-    val promise = Promise[Int]
-    val counter = new AtomicInteger(0)
-    createAggregate().subscribe(new Observer[Document] {
-      override def onNext(result: Document): Unit = {
-        channel := converter.fromDocument(result)
-        counter.incrementAndGet()
-      }
-
-      override def onError(t: Throwable): Unit = promise.failure(t)
-
-      override def onComplete(): Unit = promise.success(counter.get())
-    })
-    promise.future
+    s"db.${collection.collectionName}.aggregate(${printer(arr(json: _*))})"
   }
 
   private def createAggregate(): AggregateObservable[Document] = {

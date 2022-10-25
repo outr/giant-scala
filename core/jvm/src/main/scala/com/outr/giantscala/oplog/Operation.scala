@@ -1,6 +1,7 @@
 package com.outr.giantscala.oplog
 
-import io.circe.Json
+import fabric.Json
+import fabric.rw.RW
 
 /**
   * Record entry from OperationsLog
@@ -30,4 +31,12 @@ case class Operation(ts: Long,
                      wall: Long,
                      o: Json) {
   lazy val `type`: OpType = OpType(op)
+}
+
+object Operation {
+  implicit val charRW: RW[Char] = RW.from(
+    r = _.toInt,
+    w = _.asInt.toChar
+  )
+  implicit val rw: RW[Operation] = RW.gen
 }
