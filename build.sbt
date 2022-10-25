@@ -32,6 +32,7 @@ val mongoScalaDriverVersion = "4.7.2"
 val catsEffectVersion: String = "3.3.14"
 val fs2Version: String = "3.3.0"
 val scalatestVersion: String = "3.2.14"
+val catsEffectTestingVersion: String = "1.4.0"
 
 lazy val root = project.in(file("."))
   .aggregate(coreJS, coreJVM)
@@ -50,9 +51,11 @@ lazy val core = crossProject(JVMPlatform, JSPlatform)
       "com.outr" %%% "reactify" % reactifyVersion,
       "org.typelevel" %%% "cats-effect" % catsEffectVersion,
       "co.fs2" %%% "fs2-core" % fs2Version,
+      "co.fs2" %% "fs2-reactive-streams" % fs2Version,
       "com.outr" %%% "scribe" % scribeVersion,
       "com.outr" %% "scribe-slf4j" % scribeVersion,
-      "org.scalatest" %%% "scalatest" % scalatestVersion % Test
+      "org.scalatest" %%% "scalatest" % scalatestVersion % Test,
+      "org.typelevel" %% "cats-effect-testing-scalatest" % catsEffectTestingVersion % Test
     )
   )
   .jvmSettings(

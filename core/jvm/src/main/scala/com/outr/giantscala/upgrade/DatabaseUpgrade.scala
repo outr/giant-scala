@@ -1,8 +1,7 @@
 package com.outr.giantscala.upgrade
 
+import cats.effect.IO
 import com.outr.giantscala.MongoDatabase
-
-import scala.concurrent.Future
 
 trait DatabaseUpgrade {
   def label: String = getClass.getSimpleName.replace("$", "")
@@ -10,5 +9,5 @@ trait DatabaseUpgrade {
   def blockStartup: Boolean
   def alwaysRun: Boolean = false
 
-  def upgrade(db: MongoDatabase): Future[Unit]
+  def upgrade(db: MongoDatabase): IO[Unit]
 }

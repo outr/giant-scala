@@ -1,21 +1,20 @@
 package com.outr.giantscala.dsl
 
+import cats.effect.IO
 import com.mongodb.client.model.UpdateOptions
-import com.outr.giantscala.{DBCollection, Field, ModelObject}
+import com.outr.giantscala.{DBCollection, Field, ModelObject, StreamSupport}
 import fabric._
 import fabric.io.JsonFormatter
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.result.UpdateResult
 
-import scala.concurrent.{ExecutionContext, Future}
-
 case class UpdateBuilder[Type <: ModelObject[Type]](collection: DBCollection[Type],
                                               mongoCollection: MongoCollection[Document],
                                               many: Boolean,
                                               conditions: List[MatchCondition] = Nil,
                                               modifications: Map[String, Json] = Map.empty,
-                                              upsert: Boolean = false) {
+                                              upsert: Boolean = false) extends StreamSupport {
   def `match`(conditions: MatchCondition*): UpdateBuilder[Type] = {
     copy(conditions = this.conditions ::: conditions.toList)
   }
@@ -42,7 +41,7 @@ case class UpdateBuilder[Type <: ModelObject[Type]](collection: DBCollection[Typ
   def withUpdate: UpdateBuilder[Type] = copy(upsert = false)
   def withUpsert: UpdateBuilder[Type] = copy(upsert = true)
 
-  def toFuture(implicit executionContext: ExecutionContext): Future[UpdateResult] = {
+  def toIO: IO[UpdateResult] = {
     val filter = Document(JsonFormatter.Default(conditions.map(_.json).foldLeft[Json](obj())((j1, j2) => j1.merge(j2))))
     val update = Document(JsonFormatter.Default(modifications.map {
       case (key, json) => obj(key -> json)
@@ -50,9 +49,9 @@ case class UpdateBuilder[Type <: ModelObject[Type]](collection: DBCollection[Typ
     val options = new UpdateOptions
     options.upsert(upsert)
     if (many) {
-      mongoCollection.updateMany(filter, update, options).toFuture()
+      mongoCollection.updateMany(filter, update, options).one
     } else {
-      mongoCollection.updateOne(filter, update, options).toFuture()
+      mongoCollection.updateOne(filter, update, options).one
     }
   }
 }

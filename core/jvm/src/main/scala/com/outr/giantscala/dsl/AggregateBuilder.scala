@@ -1,5 +1,7 @@
 package com.outr.giantscala.dsl
 
+import cats.effect.IO
+
 import java.util.concurrent.atomic.AtomicInteger
 import com.outr.giantscala._
 import fabric._
@@ -10,9 +12,10 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.Collation
 import reactify.Channel
+import fs2.interop.reactivestreams._
+import org.reactivestreams.Publisher
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.language.experimental.macros
 
 case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollection[Type],
@@ -25,7 +28,10 @@ case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollec
                                                             _bypassDocumentValidation: Boolean = false,
                                                             _collation: Option[Collation] = None,
                                                             _comment: Option[String] = None,
-                                                            _hint: Option[Bson] = None) {
+                                                            _hint: Option[Bson] = None) extends Streamable[Document, Out] {
+  override protected def toPublisher: Publisher[Document] = createAggregate()
+  override protected def convert(t: Document): Out = converter.fromDocument(t)
+
   def withPipeline(instructions: AggregateInstruction*): AggregateBuilder[Type, Out] = {
     copy(pipeline = pipeline ::: instructions.toList)
   }
@@ -88,28 +94,6 @@ case class AggregateBuilder[Type <: ModelObject[Type], Out](collection: DBCollec
       JsonFormatter.Compact
     }
     s"db.${collection.collectionName}.aggregate(${printer(arr(json: _*))})"
-  }
-
-  def toFuture(implicit executionContext: ExecutionContext): Future[List[Out]] = {
-    createAggregate().toFuture().map(_.map(converter.fromDocument).toList).recover {
-      case t => throw AggregationException(toQuery(), t)
-    }
-  }
-
-  def toStream(channel: Channel[Out]): Future[Int] = {
-    val promise = Promise[Int]()
-    val counter = new AtomicInteger(0)
-    createAggregate().subscribe(new Observer[Document] {
-      override def onNext(result: Document): Unit = {
-        channel := converter.fromDocument(result)
-        counter.incrementAndGet()
-      }
-
-      override def onError(t: Throwable): Unit = promise.failure(t)
-
-      override def onComplete(): Unit = promise.success(counter.get())
-    })
-    promise.future
   }
 
   private def createAggregate(): AggregateObservable[Document] = {

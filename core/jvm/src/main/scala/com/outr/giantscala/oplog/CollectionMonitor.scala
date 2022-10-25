@@ -1,5 +1,6 @@
 package com.outr.giantscala.oplog
 
+import cats.effect.IO
 import com.mongodb.client.model.changestream.OperationType
 import com.outr.giantscala.{DBCollection, ModelObject}
 import fabric._
@@ -104,11 +105,13 @@ class CollectionMonitor[T <: ModelObject[T]](collection: DBCollection[T],
     * Starts the oplog monitor on the database if it's not already running and begins monitoring for operations relating
     * to this collection. This must be called before any operations can be received by #insert, #update, or #delete.
     */
-  def start(): Unit = if (collection.db.useOplog) {
-    collection.db.oplog.startIfNotRunning()
-    collection.db.oplog.operations.reactions += this
-  } else {
-    subscribe()
+  def start(): IO[Unit] = collection.db.buildInfo.map { buildInfo =>
+    if (buildInfo.useOplog) {
+      collection.db.oplog.startIfNotRunning()
+      collection.db.oplog.operations.reactions += this
+    } else {
+      subscribe()
+    }
   }
 
   private def subscribe(startAt: Option[BsonTimestamp] = None, awaitTime: Duration = 10.hours): Unit = {
@@ -122,11 +125,7 @@ class CollectionMonitor[T <: ModelObject[T]](collection: DBCollection[T],
   /**
     * Stops monitoring the oplog for operations related to this collection. Does not stop the oplog from running.
     */
-  def stop(): Unit = if (collection.db.version.major >= 4) {
-    // TODO: support stopping
-  } else {
-    collection.db.oplog.operations.reactions -= this
-  }
+  def stop(): Unit = collection.db.oplog.operations.reactions -= this
 
   override def apply(op: Operation, previous: Option[Operation]): ReactionStatus = {
     if (op.ns == ns) {

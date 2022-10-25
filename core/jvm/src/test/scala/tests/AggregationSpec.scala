@@ -1,17 +1,15 @@
 package tests
 
+import cats.effect.testing.scalatest.AsyncIOSpec
+
 import java.util.concurrent.atomic.AtomicLong
 import com.outr.giantscala.{Converter, DBCollection, Field, Id, Index, ModelObject, MongoDatabase}
 import com.outr.giantscala.dsl._
 import fabric.rw.RW
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
-import scribe.{Level, Logger}
-import scribe.format.Formatter
 
-import scala.concurrent.Future
-
-class AggregationSpec extends AsyncWordSpec with Matchers {
+class AggregationSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
   "Aggregation" should {
     val Apple1 = Order("Apple", 5)
     val Banana1 = Order("Banana", 8)
@@ -30,8 +28,9 @@ class AggregationSpec extends AsyncWordSpec with Matchers {
       }
     }
     "verify the version" in {
-      val version = AggregationDatabase.version.major
-      version should be >= 3
+      AggregationDatabase.buildInfo.map { buildInfo =>
+        buildInfo.major should be >= 3
+      }
     }
     "create successfully" in {
       AggregationDatabase.orders shouldNot be(null)
@@ -65,7 +64,7 @@ class AggregationSpec extends AsyncWordSpec with Matchers {
         )
         .sort(SortField.Descending(orders.qty))
         .as[LargestOrder]
-        .toFuture
+        .toList
         .map { orders =>
           orders should be(List(
             LargestOrder("Apple", 24),
@@ -85,7 +84,7 @@ class AggregationSpec extends AsyncWordSpec with Matchers {
         )
         .replaceRoot(Field[Order]("$order"))
         .sort(SortField.Descending(orders.qty))
-        .toFuture
+        .toList
         .map { orders =>
           orders.map(o => o.item -> o.qty) should be(List(
             ("Apple", 24),

@@ -9,7 +9,11 @@ case class MongoBuildInfo(version: String,
                           bits: Int,
                           debug: Boolean,
                           maxBsonObjectSize: Long,
-                          ok: Double)
+                          ok: Double) {
+  lazy val major: Int = versionArray.head
+  lazy val minor: Int = versionArray(1)
+  lazy val useOplog: Boolean = major < 4
+}
 
 object MongoBuildInfo {
   implicit val rw: RW[MongoBuildInfo] = RW.gen

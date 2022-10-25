@@ -118,7 +118,7 @@ GiantScala supports advanced features like database upgrades that are handled du
 Database.init()
 ```
 
-Note that `init()` returns a `Future[Unit]` that must complete before the database is fully usable. We'll talk about
+Note that `init()` returns a `IO[Unit]` that must complete before the database is fully usable. We'll talk about
 database upgrades later in this tutorial.
 
 ### Inserting a Person
@@ -129,7 +129,7 @@ Now that our database is fully defined we can easily insert a person:
 Database.person.insert(Person(_id = "john.doe", name = "John Doe", age = 30))
 ```
 
-Note that this returns a `Future[Either[DBFailure, Person]]` representing the success or failure of the operation.
+Note that this returns a `IO[Either[DBFailure, Person]]` representing the success or failure of the operation.
 
 ### Querying a Person
 
@@ -139,7 +139,7 @@ Now that there's a person in our database, we can query them back with:
 Database.person.all()
 ```
 
-This will return a `Future[List[Person]]`
+This will return a `IO[List[Person]]`
 
 For a more advanced query, GiantScala offers a type-safe implementation of aggregation:
 
@@ -148,10 +148,10 @@ import Database.person._
 
 aggregate
   .`match`(name === "John Doe")
-  .toFuture
+  .toList
 ```
 
-Note that this will return a `Future[List[Person]]`.
+Note that this will return a `IO[List[Person]]`.
 
 If we wanted a more simplistic, limited type to result from aggregation we could do:
 
@@ -164,11 +164,11 @@ aggregate
   .project(name.include)
   .`match`(name === "John Doe")
   .as[SimplePerson]
-  .toFuture
+  .toList
 ```
 
-This will return a `Future[List[SimplePerson]]`. This can be extremely useful for complex queries to avoid being bound to
-the original type. It is also worth noting that instead of calling `toFuture` you can call `toQuery()` and it will generate
+This will return a `IO[List[SimplePerson]]`. This can be extremely useful for complex queries to avoid being bound to
+the original type. It is also worth noting that instead of calling `toList` you can call `toQuery()` and it will generate
 a `String` representation of the query that can be directly pasted into the `mongo` REPL. This allows for much easier testing
 of complex queries.
 
