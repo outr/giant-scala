@@ -1,10 +1,9 @@
 package com.outr.giantscala
 
 import cats.effect.IO
+import cats.implicits.toTraverseOps
 
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import com.mongodb.{Block, MongoCredential, ServerAddress}
 
 import scala.language.experimental.macros
 import com.outr.giantscala.oplog.OperationsLog
@@ -12,61 +11,16 @@ import com.outr.giantscala.upgrade.{CreateDatabase, DatabaseUpgrade}
 import fabric.io.{JsonFormatter, JsonParser}
 import fabric.rw.{Asable, Convertible, RW}
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.connection.{ClusterSettings, ConnectionPoolSettings, ServerSettings, SocketSettings}
-import org.mongodb.scala.connection.ClusterSettings.Builder
-import org.mongodb.scala.{MongoClient, MongoClientSettings, MongoCollection}
+import org.mongodb.scala.MongoCollection
 import profig.Profig
 
 import scala.collection.mutable.ListBuffer
 import org.mongodb.scala.{MongoDatabase => ScalaMongoDatabase}
 import org.mongodb.scala.model.ReplaceOptions
 
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
-
 class MongoDatabase(val name: String,
-                    val urls: List[MongoDBServer] = MongoDatabase.urls,
-                    val connectionPoolMinSize: Int = 0,
-                    val connectionPoolMaxSize: Int = 100,
-                    val connectionPoolMaxWaitTime: FiniteDuration = 2.minutes,
-                    val heartbeatFrequency: FiniteDuration = 10.seconds,
-                    val connectionTimeout: FiniteDuration = 10.seconds,
-                    protected val credentials: Option[Credentials] = MongoDatabase.credentials) extends StreamSupport {
-  assert(urls.nonEmpty, "At least one URL must be included")
-
-  private val settings = {
-    val builder = MongoClientSettings.builder()
-    builder.applyToClusterSettings(new Block[ClusterSettings.Builder] {
-      override def apply(b: Builder): Unit = {
-        b.hosts(urls.map { url =>
-          new ServerAddress(url.host, url.port)
-        }.asJava)
-      }
-    })
-    builder.applyToConnectionPoolSettings(new Block[ConnectionPoolSettings.Builder] {
-      override def apply(b: ConnectionPoolSettings.Builder): Unit = {
-        b.minSize(connectionPoolMinSize)
-        b.maxSize(connectionPoolMaxSize)
-        b.maxWaitTime(connectionPoolMaxWaitTime.toMillis, TimeUnit.MILLISECONDS)
-      }
-    })
-    builder.applyToServerSettings(new Block[ServerSettings.Builder] {
-      override def apply(b: ServerSettings.Builder): Unit = {
-        b.heartbeatFrequency(heartbeatFrequency.toMillis, TimeUnit.MILLISECONDS)
-      }
-    })
-    builder.applyToSocketSettings(new Block[SocketSettings.Builder] {
-      override def apply(b: SocketSettings.Builder): Unit = {
-        b.connectTimeout(connectionTimeout.toSeconds.toInt, TimeUnit.SECONDS)
-      }
-    })
-    credentials.foreach { c =>
-      builder.credential(MongoCredential.createCredential(c.username, c.authenticationDatabase, c.password.toCharArray))
-    }
-    builder.build()
-  }
-  private val client = MongoClient(settings)
-  protected val db: ScalaMongoDatabase = client.getDatabase(name)
+                    val connection: MongoConnection = new MongoConnection()) extends StreamSupport {
+  protected val db: ScalaMongoDatabase = connection.client.getDatabase(name)
 
   // TODO: support client.startSession().toFuture().map(_.startTransaction()) for sessions and transactions on modifications (update, insert, and delete)
 
@@ -127,7 +81,7 @@ class MongoDatabase(val name: String,
 
   private val versions = ListBuffer.empty[DatabaseUpgrade]
 
-  lazy val oplog: OperationsLog = new OperationsLog(client)
+  lazy val oplog: OperationsLog = new OperationsLog(connection.client)
 
   register(CreateDatabase)
 
@@ -139,8 +93,8 @@ class MongoDatabase(val name: String,
     ()
   }
 
-  def init(): IO[Unit] = {
-    if (_initialized.compareAndSet(false, true)) {
+  def init(managed: Boolean = true): IO[Unit] = {
+    if (_initialized.compareAndSet(false, true) && managed) {
       versionStore(DatabaseVersion()).flatMap { version =>
         val upgrades = versions.toList.filterNot(v => version.upgrades.contains(v.label) && !v.alwaysRun)
         upgrade(version, upgrades, version.upgrades.isEmpty)
@@ -149,6 +103,8 @@ class MongoDatabase(val name: String,
       IO.unit
     }
   }
+
+  def truncate(): IO[Int] = collections.toList.map(_.truncate()).sequence.map(deleted => deleted.sum)
 
   private def upgrade(version: DatabaseVersion,
                       upgrades: List[DatabaseUpgrade],
@@ -192,9 +148,7 @@ class MongoDatabase(val name: String,
 
   def drop(): IO[Unit] = db.drop().first.map(_ => ())
 
-  def dispose(): Unit = {
-    client.close()
-  }
+  def dispose(): IO[Unit] = IO(connection.client.close())
 
   case class DatabaseVersion(upgrades: Set[String] = Set.empty, _id: String = "databaseVersion")
 

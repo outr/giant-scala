@@ -177,4 +177,6 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
   }
 
   def drop(): IO[Unit] = collection.drop().first.map(_ => ())
+
+  def truncate(): IO[Int] = collection.deleteMany(Document()).one.map(result => result.getDeletedCount.toInt)
 }

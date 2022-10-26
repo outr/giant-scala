@@ -302,7 +302,7 @@ case class Person(name: String,
                   age: Int,
                   created: Long = System.currentTimeMillis(),
                   modified: Long = System.currentTimeMillis(),
-                  _id: Id[Person]) extends ModelObject[Person]
+                  _id: Id[Person] = Id()) extends ModelObject[Person]
 
 object Person {
   implicit val rw: RW[Person] = RW.gen
