@@ -9,14 +9,18 @@ import fabric.io.JsonFormatter
 import org.mongodb.scala.{BulkWriteResult, MongoCollection, MongoException, MongoNamespace}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Filters.{equal, in}
-import org.mongodb.scala.model.RenameCollectionOptions
+import org.mongodb.scala.model.{FindOneAndUpdateOptions, RenameCollectionOptions, ReturnDocument}
 import org.mongodb.scala.result.DeleteResult
 
+import java.util.concurrent.TimeoutException
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.language.experimental.macros
 import scala.language.implicitConversions
 
 abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val db: MongoDatabase) extends Implicits with StreamSupport {
   db.addCollection(this)
+
+  val _id: Field[Id[T]] = field("_id")
 
   implicit class EnhancedIO[Result](io: IO[Result]) {
     def either: IO[Either[DBFailure, Result]] = io.map[Either[DBFailure, Result]](Right.apply).redeem(
@@ -32,7 +36,7 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
 
   val converter: Converter[T]
 
-//  lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this, collection)
+  //  lazy val monitor: CollectionMonitor[T] = new CollectionMonitor[T](this, collection)
 
   def id(id: String): Id[T] = Id[T](id)
 
@@ -61,6 +65,7 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
   lazy val aggregate: AggregateBuilder[T, T] = AggregateBuilder(this, collection, converter)
   lazy val updateOne: UpdateBuilder[T] = UpdateBuilder[T](this, collection, many = false)
   lazy val updateMany: UpdateBuilder[T] = UpdateBuilder[T](this, collection, many = true)
+
   def replaceOne(replacement: T): ReplaceOneBuilder[T] = ReplaceOneBuilder[T](this, collection, replacement)
 
   def deleteOne(conditions: MatchCondition*): IO[Either[DBFailure, DeleteResult]] = {
@@ -72,6 +77,51 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
     val json = conditions.foldLeft[Json](obj())((json, condition) => json.merge(condition.json))
     collection.deleteMany(Document(JsonFormatter.Default(json))).one.either
   }
+
+  def findOneAndSet(conditions: MatchCondition*)(updates: Json): IO[Option[T]] = {
+    val jsonConditions = conditions.foldLeft[Json](obj())((json, condition) => json.merge(condition.json))
+    val options = FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
+    collection.findOneAndUpdate(
+      filter = Document(JsonFormatter.Default(jsonConditions)),
+      update = Document(JsonFormatter.Default(obj("$set" -> updates))),
+      options = options
+    ).first.map(_.map(converter.fromDocument))
+  }
+
+  def fieldLock[Return](id: Id[T],
+                        field: Field[Boolean],
+                        delay: FiniteDuration = 5.seconds,
+                        maxWait: FiniteDuration = 5.minutes)
+                       (f: => IO[Return]): IO[Return] = {
+    for {
+      _ <- lockField(id, field, delay, maxWait)
+      result <- f.attempt
+      _ <- unlockField(id, field)
+    } yield {
+      result match {
+        case Left(throwable) => throw throwable
+        case Right(r) => r
+      }
+    }
+  }
+
+  def lockField(id: Id[T],
+                field: Field[Boolean],
+                delay: FiniteDuration = 5.seconds,
+                maxWait: FiniteDuration = 5.minutes,
+                start: Long = System.currentTimeMillis()): IO[Unit] = {
+    findOneAndSet(_id === id, field === false)(obj(
+      field.fieldName -> true
+    )).flatMap {
+      case Some(_) => IO.unit
+      case None if start + maxWait.toMillis < System.currentTimeMillis() => throw new TimeoutException("Maximum wait for field lock exceeded!")
+      case None => IO.sleep(delay).flatMap(_ => lockField(id, field, delay, maxWait, start))
+    }
+  }
+
+  def unlockField(id: Id[T], field: Field[Boolean]): IO[Boolean] = findOneAndSet(_id === id)(obj(
+    field.fieldName -> false
+  )).map(_.nonEmpty)
 
   def insert(values: Seq[T]): IO[Either[DBFailure, Seq[T]]] = {
     if (values.nonEmpty) {

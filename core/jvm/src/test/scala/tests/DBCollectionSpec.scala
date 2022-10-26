@@ -5,12 +5,11 @@ import cats.effect.testing.scalatest.AsyncIOSpec
 import com.outr.giantscala._
 import com.outr.giantscala.dsl.SortField
 import com.outr.giantscala.failure.FailureType
-import com.outr.giantscala.oplog.Delete
+import fabric._
 import fabric.rw.RW
 import org.scalatest.Assertion
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
-import reactify.Channel
 
 import scala.concurrent.duration.DurationInt
 import scala.language.implicitConversions
@@ -273,6 +272,42 @@ class DBCollectionSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
         .toQuery(includeSpaces = false)
       query should be("""db.person.aggregate([{"$project":{"status":{"$objectToArray":"$status"}}},{"$project":{"status":{"$arrayElemAt":["$status.k",0]}}},{"$group":{"_id":"$status","count":{"$sum":1}}},{"$project":{"_id":0,"status":{"name":"$_id","count":"$count"}}},{"$group":{"_id":"counts","counts":{"$addToSet":"$status"}}}])""")
     }
+    "verify findOneAndSet sets a new value" in {
+      import DBCollectionDatabase.person._
+      findOneAndSet(name === "Person A")(obj(
+        "age" -> 31337
+      )).map { option =>
+        option.map(_.age) should be(Some(31337))
+      }
+    }
+    "verify findOneAndSet returns None on invalid filter" in {
+      import DBCollectionDatabase.person._
+      findOneAndSet(name === "Person A", age === 123)(obj(
+        "age" -> 321
+      )).map { option =>
+        option.map(_.age) should be(None)
+      }
+    }
+    "lock on a field" in {
+      import DBCollectionDatabase.person._
+      val start = System.currentTimeMillis()
+      val io1 = fieldLock(Id[Person]("personA"), lock) {
+        IO.sleep(2.seconds)
+      }
+      val io2 = IO.sleep(100.millis).flatMap { _ =>
+        fieldLock(Id[Person]("personA"), lock, delay = 250.millis) {
+          IO.pure(System.currentTimeMillis() - start)
+        }
+      }
+      for {
+        fiber1 <- io1.start
+        fiber2 <- io2.start
+        _ <- fiber1.joinWithNever
+        delay <- fiber2.joinWithNever
+      } yield {
+        delay should be >= 2000L
+      }
+    }
     "stop the oplog" in {
       noException should be thrownBy DBCollectionDatabase.oplog.stop()
     }
@@ -300,6 +335,7 @@ class DBCollectionSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
 
 case class Person(name: String,
                   age: Int,
+                  lock: Boolean = false,
                   created: Long = System.currentTimeMillis(),
                   modified: Long = System.currentTimeMillis(),
                   _id: Id[Person] = Id()) extends ModelObject[Person]
@@ -315,11 +351,11 @@ object PersonName {
 }
 
 class PersonCollection extends DBCollection[Person]("person", DBCollectionDatabase) {
-  val name: Field[String] = Field("name")
-  val age: Field[Int] = Field("age")
-  val created: Field[Long] = Field("created")
-  val modified: Field[Long] = Field("modified")
-  val _id: Field[Id[Person]] = Field("_id")
+  val name: Field[String] = field("name")
+  val age: Field[Int] = field("age")
+  val lock: Field[Boolean] = field("lock")
+  val created: Field[Long] = field("created")
+  val modified: Field[Long] = field("modified")
 
   override val converter: Converter[Person] = Converter[Person]
 

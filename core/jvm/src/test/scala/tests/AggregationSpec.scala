@@ -117,7 +117,6 @@ class OrderCollection extends DBCollection[Order]("order", AggregationDatabase) 
   val qty: Field[Int] = Field("qty")
   val created: Field[Long] = Field("created")
   val modified: Field[Long] = Field("modified")
-  val _id: Field[Id[Order]] = Field("_id")
 
   override val converter: Converter[Order] = Converter.apply
 
