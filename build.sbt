@@ -2,13 +2,15 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 name := "giant-scala"
 ThisBuild / organization := "com.outr"
-ThisBuild / version := "1.5.0-SNAPSHOT9"
+ThisBuild / version := "1.5.0"
 ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / crossScalaVersions := List("2.13.10")
 ThisBuild / scalacOptions ++= Seq("-unchecked", "-deprecation")
 ThisBuild / resolvers ++= Resolver.sonatypeOssRepos("releases") ++ Resolver.sonatypeOssRepos("snapshots")
 
-ThisBuild / publishTo := sonatypePublishTo.value
+ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
+ThisBuild / sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
+ThisBuild / publishTo := sonatypePublishToBundle.value
 ThisBuild / sonatypeProfileName := "com.outr"
 ThisBuild / licenses := Seq("MIT" -> url("https://github.com/outr/giantscala/blob/master/LICENSE"))
 ThisBuild / sonatypeProjectHosting := Some(xerial.sbt.Sonatype.GitHubHosting("outr", "giantscala", "matt@outr.com"))
