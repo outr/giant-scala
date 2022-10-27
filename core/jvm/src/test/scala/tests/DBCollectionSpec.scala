@@ -274,19 +274,23 @@ class DBCollectionSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
     }
     "verify findOneAndSet sets a new value" in {
       import DBCollectionDatabase.person._
-      findOneAndSet(name === "Person A")(obj(
-        "age" -> 31337
-      )).map { option =>
-        option.map(_.age) should be(Some(31337))
-      }
+      findAndUpdate
+        .`match`(name === "Person A")
+        .set(age(31337))
+        .toIO
+        .map { option =>
+          option.map(_.age) should be(Some(31337))
+        }
     }
     "verify findOneAndSet returns None on invalid filter" in {
       import DBCollectionDatabase.person._
-      findOneAndSet(name === "Person A", age === 123)(obj(
-        "age" -> 321
-      )).map { option =>
-        option.map(_.age) should be(None)
-      }
+      findAndUpdate
+        .`match`(name === "Person A", age === 123)
+        .set(age(321))
+        .toIO
+        .map { option =>
+          option should be(None)
+        }
     }
     "lock on a field" in {
       import DBCollectionDatabase.person._

@@ -65,6 +65,7 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
   lazy val aggregate: AggregateBuilder[T, T] = AggregateBuilder(this, collection, converter)
   lazy val updateOne: UpdateBuilder[T] = UpdateBuilder[T](this, collection, many = false)
   lazy val updateMany: UpdateBuilder[T] = UpdateBuilder[T](this, collection, many = true)
+  lazy val findAndUpdate: FindAndUpdateBuilder[T] = FindAndUpdateBuilder[T](this, collection)
 
   def replaceOne(replacement: T): ReplaceOneBuilder[T] = ReplaceOneBuilder[T](this, collection, replacement)
 
@@ -76,16 +77,6 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
   def deleteMany(conditions: MatchCondition*): IO[Either[DBFailure, DeleteResult]] = {
     val json = conditions.foldLeft[Json](obj())((json, condition) => json.merge(condition.json))
     collection.deleteMany(Document(JsonFormatter.Default(json))).one.either
-  }
-
-  def findOneAndSet(conditions: MatchCondition*)(updates: Json): IO[Option[T]] = {
-    val jsonConditions = conditions.foldLeft[Json](obj())((json, condition) => json.merge(condition.json))
-    val options = FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
-    collection.findOneAndUpdate(
-      filter = Document(JsonFormatter.Default(jsonConditions)),
-      update = Document(JsonFormatter.Default(obj("$set" -> updates))),
-      options = options
-    ).first.map(_.map(converter.fromDocument))
   }
 
   def fieldLock[Return](id: Id[T],
@@ -110,18 +101,23 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
                 delay: FiniteDuration = 5.seconds,
                 maxWait: FiniteDuration = 5.minutes,
                 start: Long = System.currentTimeMillis()): IO[Unit] = {
-    findOneAndSet(_id === id, field === false)(obj(
-      field.fieldName -> true
-    )).flatMap {
-      case Some(_) => IO.unit
-      case None if start + maxWait.toMillis < System.currentTimeMillis() => throw new TimeoutException("Maximum wait for field lock exceeded!")
-      case None => IO.sleep(delay).flatMap(_ => lockField(id, field, delay, maxWait, start))
-    }
+    findAndUpdate
+      .`match`(_id === id, field === false)
+      .set(field(true))
+      .toIO
+      .flatMap {
+        case Some(_) => IO.unit
+        case None if start + maxWait.toMillis < System.currentTimeMillis() =>
+          throw new TimeoutException("Maximum wait for field lock exceeded!")
+        case None => IO.sleep(delay).flatMap(_ => lockField(id, field, delay, maxWait, start))
+      }
   }
 
-  def unlockField(id: Id[T], field: Field[Boolean]): IO[Boolean] = findOneAndSet(_id === id)(obj(
-    field.fieldName -> false
-  )).map(_.nonEmpty)
+  def unlockField(id: Id[T], field: Field[Boolean]): IO[Boolean] = findAndUpdate
+    .`match`(_id === id)
+    .set(field(false))
+    .toIO
+    .map(_.nonEmpty)
 
   def insert(values: Seq[T]): IO[Either[DBFailure, Seq[T]]] = {
     if (values.nonEmpty) {
