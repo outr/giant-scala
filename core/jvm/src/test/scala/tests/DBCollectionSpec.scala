@@ -295,11 +295,15 @@ class DBCollectionSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
     "lock on a field" in {
       import DBCollectionDatabase.person._
       val start = System.currentTimeMillis()
+      var io1Finished = false
       val io1 = fieldLock(Id[Person]("personA"), lock) {
-        IO.sleep(2.seconds)
+        IO.sleep(2.seconds).map { _ =>
+          io1Finished = true
+        }
       }
       val io2 = IO.sleep(100.millis).flatMap { _ =>
         fieldLock(Id[Person]("personA"), lock, delay = 250.millis) {
+          io1Finished should be(true)
           IO.pure(System.currentTimeMillis() - start)
         }
       }

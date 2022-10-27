@@ -32,6 +32,8 @@ trait Implicits {
 
   implicit class FieldListExtras[T: RW](f: Field[List[T]]) {
     def ===(value: T): MatchCondition = MatchCondition(obj(f.fieldName -> value.json))
+    def isEmpty: MatchCondition = MatchCondition(obj(f.fieldName -> arr()))
+    def nonEmpty: MatchCondition = MatchCondition(obj(f.fieldName -> obj("$ne" -> arr())))
     def >(value: T): MatchCondition = {
       MatchCondition(obj(f.fieldName -> obj("$gt" -> value.json)))
     }

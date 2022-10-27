@@ -96,7 +96,7 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
     }
   }
 
-  def lockField(id: Id[T],
+  private def lockField(id: Id[T],
                 field: Field[Boolean],
                 delay: FiniteDuration = 5.seconds,
                 maxWait: FiniteDuration = 5.minutes,
@@ -113,7 +113,7 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
       }
   }
 
-  def unlockField(id: Id[T], field: Field[Boolean]): IO[Boolean] = findAndUpdate
+  private def unlockField(id: Id[T], field: Field[Boolean]): IO[Boolean] = findAndUpdate
     .`match`(_id === id)
     .set(field(false))
     .toIO
@@ -133,6 +133,21 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
     collection.insertOne(document).first.map(_ => value).either
   }
 
+  private def manageStream(stream: fs2.Stream[IO, T], batchSize: Int)(f: List[T] => IO[Int]): IO[Int] = stream
+    .chunkN(batchSize)
+    .flatMap { chunk =>
+      fs2.Stream.eval(f(chunk.toList))
+    }
+    .compile
+    .foldMonoid
+
+  def insert(stream: fs2.Stream[IO, T], batchSize: Int): IO[Int] =  manageStream(stream, batchSize) { list =>
+    insert(list).map {
+      case Left(f) => throw f.throwable
+      case Right(_) => list.size
+    }
+  }
+
   def update(value: T): IO[Either[DBFailure, T]] = {
     val doc = converter.toDocument(value)
     collection.replaceOne(equal("_id", value._id.value), doc).first.map(_ => value).either
@@ -146,6 +161,10 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
     b.execute()
   }
 
+  def update(stream: fs2.Stream[IO, T], batchSize: Int): IO[Int] = manageStream(stream, batchSize) { list =>
+    update(list).map(_ => list.length)
+  }
+
   def upsert(value: T): IO[Either[DBFailure, T]] = {
     replaceOne(value).`match`(Field[Id[T]]("_id") === value._id).upsert.toIO.map(_ => value).either
   }
@@ -157,6 +176,16 @@ abstract class DBCollection[T <: ModelObject[T]](val collectionName: String, val
     }
     b.execute()
   }
+
+  def upsert(stream: fs2.Stream[IO, T], batchSize: Int): IO[Int] = manageStream(stream, batchSize) { list =>
+    upsert(list).map(_ => list.length)
+  }
+
+  def getById(id: Id[T]): IO[Option[T]] = aggregate
+    .`match`(_id === id)
+    .first
+
+  def byId(id: Id[T]): IO[T] = getById(id).map(_.getOrElse(throw new RuntimeException(s"Not found: $id")))
 
   def byIds(ids: Seq[Id[T]]): IO[List[T]] = {
     collection.find(in("_id", ids.map(_.value): _*)).toList.map { documents =>
