@@ -46,6 +46,9 @@ trait Implicits {
     def <=(value: T): MatchCondition = {
       MatchCondition(obj(f.fieldName -> obj("$lte" -> value.json)))
     }
+    def in(values: T*): MatchCondition = {
+      MatchCondition(obj(f.fieldName -> obj("$in" -> arr(values.map(_.json): _*))))
+    }
   }
 
   implicit class FieldMatching[T](f: Field[T]) {

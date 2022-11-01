@@ -3,7 +3,7 @@ package tests
 import cats.effect.IO
 import cats.effect.testing.scalatest.AsyncIOSpec
 import com.outr.giantscala._
-import com.outr.giantscala.dsl.SortField
+import com.outr.giantscala.dsl._
 import com.outr.giantscala.failure.FailureType
 import fabric._
 import fabric.rw.RW
@@ -292,6 +292,54 @@ class DBCollectionSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
           option should be(None)
         }
     }
+    "push a tag to a person" in {
+      import DBCollectionDatabase._
+      person.updateMany.push(PushModifier.each(person.tags, List("hello", "world"))).toIO.map { result =>
+        result.getModifiedCount should be(2L)
+      }
+    }
+    "verify added tags" in {
+      import DBCollectionDatabase._
+      person.all().map(_.map(_.tags)).map { lists =>
+        lists should be(List(
+          List("hello", "world"),
+          List("hello", "world")
+        ))
+      }
+    }
+    "push a tag to a specific person" in {
+      import DBCollectionDatabase._
+      person.updateMany
+        .filter(person.name === "Person A")
+        .push(PushModifier.each(person.tags, List("person")))
+        .toIO.map { result =>
+          result.getModifiedCount should be(1L)
+        }
+    }
+    "pull a tag from a specific person" in {
+      import DBCollectionDatabase._
+      person.updateMany
+        .filter(person.name === "Person A")
+        .pull(PullModifier.in(person.tags, List("world")))
+        .toIO.map { result =>
+        result.getModifiedCount should be(1L)
+      }
+    }
+    "verify added tag for one person" in {
+      import DBCollectionDatabase._
+      person.all().map(_.map(_.tags)).map { lists =>
+        lists should be(List(
+          List("hello", "person"),
+          List("hello", "world")
+        ))
+      }
+    }
+    "query for a person based on a tag" in {
+      import DBCollectionDatabase._
+      person.aggregate.filter(person.tags.in("person")).toList.map { list =>
+        list.map(_.name) should be(List("Person A"))
+      }
+    }
     "lock on a field" in {
       import DBCollectionDatabase.person._
       val start = System.currentTimeMillis()
@@ -344,6 +392,7 @@ class DBCollectionSpec extends AsyncWordSpec with AsyncIOSpec with Matchers {
 case class Person(name: String,
                   age: Int,
                   lock: Boolean = false,
+                  tags: List[String] = Nil,
                   created: Long = System.currentTimeMillis(),
                   modified: Long = System.currentTimeMillis(),
                   _id: Id[Person] = Id()) extends ModelObject[Person]
@@ -362,6 +411,7 @@ class PersonCollection extends DBCollection[Person]("person", DBCollectionDataba
   val name: Field[String] = field("name")
   val age: Field[Int] = field("age")
   val lock: Field[Boolean] = field("lock")
+  val tags: Field[List[String]] = field("tags")
   val created: Field[Long] = field("created")
   val modified: Field[Long] = field("modified")
 

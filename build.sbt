@@ -2,7 +2,7 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 name := "giant-scala"
 ThisBuild / organization := "com.outr"
-ThisBuild / version := "1.5.0"
+ThisBuild / version := "1.5.1-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.10"
 ThisBuild / crossScalaVersions := List("2.13.10")
 ThisBuild / scalacOptions ++= Seq("-unchecked", "-deprecation")

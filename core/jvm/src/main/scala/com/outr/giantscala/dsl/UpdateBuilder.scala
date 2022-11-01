@@ -24,6 +24,16 @@ case class UpdateBuilder[Type <: ModelObject[Type]](collection: DBCollection[Typ
   def set(fieldAndValues: FieldAndValue[_]*): UpdateBuilder[Type] =
     withModifications("$set", fieldAndValues.map(_.json): _*)
 
+  def push(modifiers: PushModifier[_]*): UpdateBuilder[Type] =
+    withModifications("$push", obj(modifiers.map { m =>
+      m.field.fieldName -> m.modifier
+    }: _*))
+
+  def pull(modifiers: PullModifier[_]*): UpdateBuilder[Type] =
+    withModifications("$pull", obj(modifiers.map { m =>
+      m.field.fieldName -> m.modifier
+    }: _*))
+
   def setOnInsert(values: Json*): UpdateBuilder[Type] = withModifications("$setOnInsert", values: _*)
 
   def unset(fields: Field[_]*): UpdateBuilder[Type] = {
