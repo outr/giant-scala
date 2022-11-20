@@ -27,7 +27,7 @@ ThisBuild / developers := List(
 
 ThisBuild / testOptions += Tests.Argument("-oD")
 
-val scribeVersion = "3.10.4"
+val scribeVersion = "3.10.5"
 val profigVersion = "3.4.4"
 val reactifyVersion = "4.0.8"
 val mongoScalaDriverVersion = "4.7.2"
