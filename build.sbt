@@ -32,7 +32,7 @@ val profigVersion = "3.4.4"
 val reactifyVersion = "4.0.8"
 val mongoScalaDriverVersion = "4.7.2"
 val catsEffectVersion: String = "3.3.14"
-val fs2Version: String = "3.3.0"
+val fs2Version: String = "3.9.1"
 val scalatestVersion: String = "3.2.14"
 val catsEffectTestingVersion: String = "1.4.0"
 
