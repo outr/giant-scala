@@ -3,8 +3,8 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 name := "giant-scala"
 ThisBuild / organization := "com.outr"
 ThisBuild / version := "1.5.1"
-ThisBuild / scalaVersion := "2.13.10"
-ThisBuild / crossScalaVersions := List("2.13.10")
+ThisBuild / scalaVersion := "2.13.13"
+ThisBuild / crossScalaVersions := List("2.13.13")
 ThisBuild / scalacOptions ++= Seq("-unchecked", "-deprecation")
 ThisBuild / resolvers ++= Resolver.sonatypeOssRepos("releases") ++ Resolver.sonatypeOssRepos("snapshots")
 
